@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFA Referee Availability Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-amber-500 selection:text-slate-950">
+
+    <!-- LOGIN SCREEN OVERLAY -->
+    <div id="loginScreen" class="fixed inset-0 bg-slate-950 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-8 space-y-6 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="inline-flex bg-amber-500 text-slate-950 p-3 rounded-2xl font-bold items-center justify-center shadow-lg shadow-amber-500/20 mb-2">
+                    <i class="fa-solid fa-fencing text-2xl"></i>
+                </div>
+                <h1 class="text-xl font-bold text-white">OFA Referee Portal Login</h1>
+                <p class="text-xs text-slate-400">Ontario Fencing Association • Secure Portal Access</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="loginEmail" required placeholder="e.g. alex.mercer@fencingontario.ca" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Password</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div class="text-xs text-slate-500 bg-slate-950/50 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <div><strong class="text-slate-300">Demo Logins:</strong></div>
+                    <div>• Referee: <span class="text-amber-400">alex.mercer@fencingontario.ca</span></div>
+                    <div>• Assignor: <span class="text-amber-400">assignor@fencingontario.ca</span></div>
+                    <div>• Admin: <span class="text-amber-400">admin@fencingontario.ca</span></div>
+                    <div class="text-[10px] text-slate-600 mt-1">Password for all demo accounts: <code class="text-slate-400">password</code></div>
+                </div>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/10">
+                    Sign In Securely
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- FIRST-TIME PASSWORD CHANGE MODAL OVERLAY -->
+    <div id="passwordChangeModal" class="fixed inset-0 bg-slate-950 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-8 space-y-6 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="inline-flex bg-amber-500 text-slate-950 p-3 rounded-2xl font-bold items-center justify-center shadow-lg shadow-amber-500/20 mb-2">
+                    <i class="fa-solid fa-key text-2xl"></i>
+                </div>
+                <h1 class="text-xl font-bold text-white">Security Update Required</h1>
+                <p class="text-xs text-slate-400">Since this is your first time logging in, please update your temporary password to a secure personal password.</p>
+            </div>
+
+            <form onsubmit="handlePasswordChange(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">New Password</label>
+                    <input type="password" id="newPassword" required placeholder="At least 8 characters" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Confirm New Password</label>
+                    <input type="password" id="confirmNewPassword" required placeholder="Re-enter new password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold py-3 rounded-xl text-sm transition shadow-lg shadow-amber-500/10">
+                    Set New Password & Continue
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-950 border-b border-slate-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 text-slate-950 p-2.5 rounded-xl font-bold flex items-center justify-center shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid fa-fencing text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl tracking-tight text-white flex items-center gap-2">
+                        OFA Referee Portal 
+                        <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">v2.7</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Ontario Fencing Association • Official Scheduling & Availability</p>
+                </div>
+            </div>
+
+            <!-- Role Switcher & User Profile Preview -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex flex-col text-right">
+                    <span id="currentUserName" class="text-sm font-semibold text-white">Alex Mercer</span>
+                    <span id="currentUserRoleBadge" class="text-xs text-amber-400 font-medium">Referee (Personal View)</span>
+                </div>
+                
+                <!-- Role Navigation Tabs (Restricted by Permission) -->
+                <div id="roleNavContainer" class="bg-slate-900 border border-slate-700 rounded-xl p-1 flex items-center space-x-1">
+                    <button onclick="switchRole('referee')" id="roleBtnRef" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-amber-500 text-slate-950 shadow">
+                        Referee
+                    </button>
+                    <button onclick="switchRole('assignor')" id="roleBtnAssignor" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white">
+                        Assignor
+                    </button>
+                    <button onclick="switchRole('admin')" id="roleBtnAdmin" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white">
+                        Admin
+                    </button>
+                </div>
+
+                <button onclick="logout()" title="Sign Out" class="bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 p-2.5 rounded-xl text-xs transition">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Notification Toast Box -->
+        <div id="toast" class="hidden bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 px-4 py-3 rounded-xl flex items-center justify-between shadow-xl">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+                <span id="toastMessage" class="text-sm font-medium">Changes saved successfully.</span>
+            </div>
+            <button onclick="hideToast()" class="text-emerald-400 hover:text-emerald-200"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Role-Specific Views Container -->
+        
+        <!-- 1. REFEREE VIEW (Personal Profile & Event Availability) -->
+        <div id="viewReferee" class="space-y-8">
+            <!-- Welcome Banner -->
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700/60 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        Welcome back, <span id="welcomeBannerName">Alex Mercer</span>!
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">Manage your contact information and submit your event availabilities below.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        <i class="fa-solid fa-shield-halved"></i> Provincial Referee
+                    </span>
+                </div>
+            </div>
+
+            <!-- Grid Layout: Personal Info (Editable) vs Licenses (Locked by OFA) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Personal Info (Editable by Referee) -->
+                <div class="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <h3 class="font-semibold text-base text-white flex items-center gap-2">
+                            <i class="fa-solid fa-user-pen text-amber-500"></i> Personal Information
+                        </h3>
+                        <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Editable</span>
+                    </div>
+
+                    <form id="refereeProfileForm" onsubmit="savePersonalProfile(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Full Name</label>
+                            <input type="text" id="refName" value="" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+                            <input type="email" id="refEmail" value="" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Phone Number</label>
+                            <input type="text" id="refPhone" value="" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Home Region / Club</label>
+                            <input type="text" id="refRegion" value="" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        </div>
+                        <button type="submit" class="w-full mt-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold py-2.5 rounded-xl text-sm transition shadow-lg shadow-amber-500/10">
+                            Save Personal Info
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Licenses & Certifications (Locked / Managed by Admin/OFA) -->
+                <div class="lg:col-span-2 bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                            <h3 class="font-semibold text-base text-white flex items-center gap-2">
+                                <i class="fa-solid fa-award text-amber-500"></i> Official Certifications & Weapon Ratings
+                            </h3>
+                            <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-lock text-[10px]"></i> Managed by OFA Admin
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-3">
+                            These credentials are officially awarded and updated by the Ontario Fencing Association. Referees cannot modify weapon licenses directly. Contact an administrator if recertification is required.
+                        </p>
+
+                        <!-- Read-Only Badge Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">F</div>
+                                    <div>
+                                        <div class="text-sm font-semibold text-white">Foil Rating</div>
+                                        <div class="text-xs text-slate-400">Domestic Certified</div>
+                                    </div>
+                                </div>
+                                <span id="badgeFoil" class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Provincial A</span>
+                            </div>
+
+                            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">E</div>
+                                    <div>
+                                        <div class="text-sm font-semibold text-white">Épée Rating</div>
+                                        <div class="text-xs text-slate-400">Domestic Certified</div>
+                                    </div>
+                                </div>
+                                <span id="badgeEpee" class="px-3 py-1 rounded-lg text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">National B</span>
+                            </div>
+
+                            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">S</div>
+                                    <div>
+                                        <div class="text-sm font-semibold text-white">Sabre Rating</div>
+                                        <div class="text-xs text-slate-400">Domestic Certified</div>
+                                    </div>
+                                </div>
+                                <span id="badgeSabre" class="px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">Unrated</span>
+                            </div>
+
+                            <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">W</div>
+                                    <div>
+                                        <div class="text-sm font-semibold text-white">Para / Wheelchair</div>
+                                        <div class="text-xs text-slate-400">Specialist Certification</div>
+                                    </div>
+                                </div>
+                                <span id="badgePara" class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Certified</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs text-slate-400 mt-6">
+                        <span>OFA Member ID: <strong class="text-white">OFA-2026-9841</strong></span>
+                        <span>Safe Sport Certified: <strong class="text-emerald-400">Valid until Aug 2027</strong></span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Event Availability Submission Section -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-2">
+                    <div>
+                        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-days text-amber-500"></i> Upcoming Tournament Availability
+                        </h3>
+                        <p class="text-xs text-slate-400">Select your availability for upcoming OFA sanctioned events. Choose Part Time to specify exact AM/PM sessions.</p>
+                    </div>
+                    <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-slate-300">
+                        Submission Deadline: <span class="text-amber-400 font-semibold">5 Days Prior to Event</span>
+                    </div>
+                </div>
+
+                <!-- Event List Container -->
+                <div id="refereeEventList" class="space-y-4">
+                    <!-- Populated dynamically via JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. ASSIGNOR VIEW (View submissions & pull lists per event) -->
+        <div id="viewAssignor" class="hidden space-y-8">
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700/60 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Assignor Dashboard</h2>
+                    <p class="text-sm text-slate-400 mt-1">Review referee submissions, filter certified officials by event, and pull tournament rosters.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="exportAssignorRoster()" class="bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-2 rounded-xl text-xs flex items-center gap-2 border border-slate-700 transition">
+                        <i class="fa-solid fa-download text-amber-500"></i> Export Event Roster CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Select Tournament Event</label>
+                    <select id="assignorEventSelect" onchange="renderAssignorTable()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Filter by Weapon / Specialty</label>
+                    <select id="assignorWeaponFilter" onchange="renderAssignorTable()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        <option value="ALL">All Weapons / Specialties</option>
+                        <option value="Foil">Foil</option>
+                        <option value="Epee">Épée</option>
+                        <option value="Sabre">Sabre</option>
+                        <option value="Para">Para / Wheelchair</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Filter by Availability Status</label>
+                    <select id="assignorStatusFilter" onchange="renderAssignorTable()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                        <option value="ALL">All Statuses</option>
+                        <option value="Full Time">Available Full Time</option>
+                        <option value="Part Time">Part Time</option>
+                        <option value="Not Available">Not Available</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Referee Submissions Table for Selected Event -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-base text-white" id="assignorTableTitle">Submissions for Ontario Youth & Cadet Circuit #2</h3>
+                        <p class="text-xs text-slate-400">Showing referee responses and session breakdowns for this tournament.</p>
+                    </div>
+                    <span id="assignorCountBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">3 Referees Registered</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-900/80 text-slate-400 text-xs border-b border-slate-800 uppercase tracking-wider">
+                                <th class="p-4">Referee Name</th>
+                                <th class="p-4">Region / Club</th>
+                                <th class="p-4">Ratings</th>
+                                <th class="p-4">Availability Status</th>
+                                <th class="p-4">Session Breakdown</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignorTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. ADMIN VIEW (Full Access: Master Directory, Edit Locked Certifications & Events) -->
+        <div id="viewAdmin" class="hidden space-y-8">
+            <div class="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700/60 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white">OFA Master Admin Panel</h2>
+                    <p class="text-sm text-slate-400 mt-1">Full access control. Manage referee master database, edit locked weapon ratings, and configure tournament schedule.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="openAddUserModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition shadow-lg shadow-amber-500/10">
+                        <i class="fa-solid fa-user-plus"></i> Add User (Referee / Assignor)
+                    </button>
+                    <button onclick="openAddTournamentModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition border border-slate-700">
+                        <i class="fa-solid fa-calendar-plus"></i> Add Tournament
+                    </button>
+                </div>
+            </div>
+
+            <!-- Master Referee Directory Table -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-base text-white">Master Directory & Locked Certifications</h3>
+                        <p class="text-xs text-slate-400">Administrators can update official weapon ratings, roles, and status for any referee or assignor in the association.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-900/80 text-slate-400 text-xs border-b border-slate-800 uppercase tracking-wider">
+                                <th class="p-4">Name & Contact</th>
+                                <th class="p-4">System Role</th>
+                                <th class="p-4">Foil Rating</th>
+                                <th class="p-4">Épée Rating</th>
+                                <th class="p-4">Sabre Rating</th>
+                                <th class="p-4">Para Rating</th>
+                                <th class="p-4 text-right">Edit Certs</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminMasterTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tournament Schedule Management Table -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl shadow-xl overflow-hidden mt-8">
+                <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-base text-white">Sanctioned Tournaments & Competitions</h3>
+                        <p class="text-xs text-slate-400">Manage upcoming fencing events for which referees submit availability.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-900/80 text-slate-400 text-xs border-b border-slate-800 uppercase tracking-wider">
+                                <th class="p-4">Tournament Name</th>
+                                <th class="p-4">Date Range</th>
+                                <th class="p-4">Location</th>
+                                <th class="p-4">Scheduled Days</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTournamentsTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- EDIT REFEREE CERTIFICATIONS MODAL (Admin Only) -->
+    <div id="adminEditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-500"></i> Edit Official Certifications
+                </h3>
+                <button onclick="closeAdminEditModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="adminEditForm" onsubmit="saveAdminCertifications(event)" class="space-y-4">
+                <input type="hidden" id="editModalRefId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">User Name</label>
+                    <input type="text" id="editModalName" readonly class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-300 cursor-not-allowed">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Foil Rating</label>
+                        <select id="editModalFoil" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            <option value="Unrated">Unrated</option>
+                            <option value="Provincial B">Provincial B</option>
+                            <option value="Provincial A">Provincial A</option>
+                            <option value="National B">National B</option>
+                            <option value="National A">National A</option>
+                            <option value="FIE">FIE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Épée Rating</label>
+                        <select id="editModalEpee" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            <option value="Unrated">Unrated</option>
+                            <option value="Provincial B">Provincial B</option>
+                            <option value="Provincial A">Provincial A</option>
+                            <option value="National B">National B</option>
+                            <option value="National A">National A</option>
+                            <option value="FIE">FIE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Sabre Rating</label>
+                        <select id="editModalSabre" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            <option value="Unrated">Unrated</option>
+                            <option value="Provincial B">Provincial B</option>
+                            <option value="Provincial A">Provincial A</option>
+                            <option value="National B">National B</option>
+                            <option value="National A">National A</option>
+                            <option value="FIE">FIE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Para / Wheelchair</label>
+                        <select id="editModalPara" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                            <option value="Unrated">Unrated</option>
+                            <option value="Certified">Certified</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="closeAdminEditModal()" class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-300">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow">Save Certifications</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-6 mt-auto text-center text-xs text-slate-500">
+        <p>Ontario Fencing Association (OFA) Referee Scheduling Portal • Built for CFF/OFA Sanctioned Tournaments</p>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Mock State: Tournaments
+        const eventsData = [
+            {
+                id: 'ev1',
+                name: 'Ontario Youth & Cadet Circuit #2',
+                dateRange: 'Nov 14 - Nov 15, 2026',
+                location: 'Pan Am Sports Centre, Toronto',
+                days: ['Day 1 (Nov 14)', 'Day 2 (Nov 15)']
+            },
+            {
+                id: 'ev2',
+                name: 'OFA Provincial Open Championships',
+                dateRange: 'Dec 5 - Dec 6, 2026',
+                location: 'University of Ottawa',
+                days: ['Day 1 (Dec 5)', 'Day 2 (Dec 6)']
+            },
+            {
+                id: 'ev3',
+                name: 'Toronto Winter Sword Senior Open',
+                dateRange: 'Jan 16, 2027',
+                location: 'Dynamo Fencing Club',
+                days: ['Day 1 (Jan 16)']
+            }
+        ];
+
+        // Mock State: Users Database (Referees, Assignors, Admins)
+        let refereesData = [
+            {
+                id: 'ref1',
+                name: 'Alex Mercer',
+                email: 'alex.mercer@fencingontario.ca',
+                phone: '(416) 555-0192',
+                region: 'Greater Toronto Area',
+                role: 'referee',
+                isFirstLogin: true, // Forces password change on first login
+                ratings: { foil: 'Provincial A', epee: 'National B', sabre: 'Unrated', para: 'Certified' },
+                availabilities: {
+                    'ev1': { status: 'Full Time', sessions: {} },
+                    'ev2': { status: 'Part Time', sessions: { 'Day 1 (Dec 5)_AM': true, 'Day 1 (Dec 5)_PM': false, 'Day 2 (Dec 6)_AM': true, 'Day 2 (Dec 6)_PM': true } },
+                    'ev3': { status: 'Not Available', sessions: {} }
+                }
+            },
+            {
+                id: 'ref2',
+                name: 'Sarah Jenkins',
+                email: 's.jenkins@fencingontario.ca',
+                phone: '(613) 555-8821',
+                region: 'Ottawa Region',
+                role: 'referee',
+                isFirstLogin: false,
+                ratings: { foil: 'National A', epee: 'Provincial A', sabre: 'National B', para: 'Unrated' },
+                availabilities: {
+                    'ev1': { status: 'Part Time', sessions: { 'Day 1 (Nov 14)_AM': true, 'Day 1 (Nov 14)_PM': true, 'Day 2 (Nov 15)_AM': false, 'Day 2 (Nov 15)_PM': true } },
+                    'ev2': { status: 'Full Time', sessions: {} },
+                    'ev3': { status: 'Full Time', sessions: {} }
+                }
+            },
+            {
+                id: 'ref3',
+                name: 'David Chen',
+                email: 'david.chen@fencingontario.ca',
+                phone: '(905) 555-4920',
+                region: 'Central Ontario',
+                role: 'referee',
+                isFirstLogin: false,
+                ratings: { foil: 'Provincial B', epee: 'Provincial B', sabre: 'Provincial A', para: 'Unrated' },
+                availabilities: {
+                    'ev1': { status: 'Not Available', sessions: {} },
+                    'ev2': { status: 'Part Time', sessions: { 'Day 1 (Dec 5)_AM': false, 'Day 1 (Dec 5)_PM': true, 'Day 2 (Dec 6)_AM': true, 'Day 2 (Dec 6)_PM': false } },
+                    'ev3': { status: 'Full Time', sessions: {} }
+                }
+            },
+            {
+                id: 'assignor1',
+                name: 'Lead Tournament Assignor',
+                email: 'assignor@fencingontario.ca',
+                phone: '(416) 555-9900',
+                region: 'OFA Provincial Office',
+                role: 'assignor',
+                isFirstLogin: false,
+                ratings: { foil: 'National A', epee: 'National A', sabre: 'National A', para: 'Certified' },
+                availabilities: {}
+            }
+        ];
+
+        let currentRole = 'referee';
+        let currentActiveRefereeId = 'ref1';
+        let loggedInUser = null;
+        let pendingUserObject = null;
+
+        window.onload = function() {
+            // Keep login screen active on load
+        };
+
+        // Handle Login Submission
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const password = document.getElementById('loginPassword').value;
+
+            if (password !== 'password') {
+                showToast("Invalid password. Please use 'password' for demo accounts.");
+                return;
+            }
+            
+            let userObj = null;
+            if (email.includes('admin')) {
+                userObj = { name: 'Association Administrator', role: 'admin', email: email, isFirstLogin: false };
+            } else {
+                let foundUser = refereesData.find(r => r.email.toLowerCase() === email);
+                if (!foundUser) {
+                    foundUser = refereesData[0]; // Default fallback
+                }
+                userObj = { name: foundUser.name, role: foundUser.role || 'referee', id: foundUser.id, email: foundUser.email, isFirstLogin: foundUser.isFirstLogin };
+                if (foundUser.role === 'referee') {
+                    currentActiveRefereeId = foundUser.id;
+                }
+            }
+
+            document.getElementById('loginScreen').classList.add('hidden');
+
+            // Force password change on first login
+            if (userObj.isFirstLogin) {
+                pendingUserObject = userObj;
+                document.getElementById('passwordChangeModal').classList.remove('hidden');
+            } else {
+                completeLoginSequence(userObj);
+            }
+        }
+
+        function handlePasswordChange(e) {
+            e.preventDefault();
+            const p1 = document.getElementById('newPassword').value;
+            const p2 = document.getElementById('confirmNewPassword').value;
+
+            if (p1.length < 8) {
+                showToast("Password must be at least 8 characters long.");
+                return;
+            }
+            if (p1 !== p2) {
+                showToast("New passwords do not match. Please try again.");
+                return;
+            }
+
+            if (pendingUserObject && pendingUserObject.id) {
+                const userRec = refereesData.find(r => r.id === pendingUserObject.id);
+                if (userRec) userRec.isFirstLogin = false;
+            }
+
+            document.getElementById('passwordChangeModal').classList.add('hidden');
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmNewPassword').value = '';
+
+            const activeUser = pendingUserObject;
+            pendingUserObject = null;
+            completeLoginSequence(activeUser);
+            showToast("Password updated successfully! Welcome to the portal.");
+        }
+
+        function completeLoginSequence(userObj) {
+            loggedInUser = userObj;
+            currentRole = userObj.role;
+
+            applyRolePermissions();
+            renderRefereeProfileForm();
+            renderRefereeEvents();
+            populateAssignorDropdowns();
+            renderAssignorTable();
+            renderAdminTable();
+            renderAdminTournamentsTable();
+            showToast(`Welcome back, ${loggedInUser.name}!`);
+        }
+
+        // Render profile form with user's saved credentials
+        function renderRefereeProfileForm() {
+            const ref = refereesData.find(r => r.id === currentActiveRefereeId) || refereesData[0];
+            
+            // Sync current header & welcome banner
+            const nameBanner = document.getElementById('welcomeBannerName');
+            if (nameBanner) nameBanner.innerText = ref.name;
+
+            document.getElementById('refName').value = ref.name || '';
+            document.getElementById('refEmail').value = ref.email || '';
+            document.getElementById('refPhone').value = ref.phone || '';
+            document.getElementById('refRegion').value = ref.region || '';
+
+            // Update badge ratings
+            if (ref.ratings) {
+                document.getElementById('badgeFoil').innerText = ref.ratings.foil || 'Unrated';
+                document.getElementById('badgeEpee').innerText = ref.ratings.epee || 'Unrated';
+                document.getElementById('badgeSabre').innerText = ref.ratings.sabre || 'Unrated';
+                document.getElementById('badgePara').innerText = ref.ratings.para || 'Unrated';
+            }
+        }
+
+        function logout() {
+            loggedInUser = null;
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+
+        // Apply role permissions to navigation and views
+        function applyRolePermissions() {
+            const refBtn = document.getElementById('roleBtnRef');
+            const assignorBtn = document.getElementById('roleBtnAssignor');
+            const adminBtn = document.getElementById('roleBtnAdmin');
+
+            refBtn.style.display = 'inline-block';
+            assignorBtn.style.display = 'inline-block';
+            adminBtn.style.display = 'inline-block';
+
+            if (loggedInUser.role === 'referee') {
+                assignorBtn.style.display = 'none';
+                adminBtn.style.display = 'none';
+                switchRole('referee');
+            } else if (loggedInUser.role === 'assignor') {
+                adminBtn.style.display = 'none';
+                switchRole('assignor');
+            } else {
+                switchRole('admin');
+            }
+        }
+
+        // Switch Role Function
+        function switchRole(role) {
+            currentRole = role;
+            
+            document.getElementById('roleBtnRef').className = role === 'referee' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-amber-500 text-slate-950 shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white';
+            document.getElementById('roleBtnAssignor').className = role === 'assignor' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-amber-500 text-slate-950 shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white';
+            document.getElementById('roleBtnAdmin').className = role === 'admin' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-amber-500 text-slate-950 shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white';
+
+            document.getElementById('viewReferee').classList.toggle('hidden', role !== 'referee');
+            document.getElementById('viewAssignor').classList.toggle('hidden', role !== 'assignor');
+            document.getElementById('viewAdmin').classList.toggle('hidden', role !== 'admin');
+
+            const badge = document.getElementById('currentUserRoleBadge');
+            const nameEl = document.getElementById('currentUserName');
+            nameEl.innerText = loggedInUser.name;
+            
+            if (role === 'referee') {
+                badge.innerText = "Referee (Personal Profile)";
+            } else if (role === 'assignor') {
+                badge.innerText = "Assignor Dashboard Access";
+            } else {
+                badge.innerText = "OFA Master Admin";
+                renderAdminTable();
+            }
+        }
+
+        // Render Referee Event List & Availability selectors
+        function renderRefereeEvents() {
+            const container = document.getElementById('refereeEventList');
+            const ref = refereesData.find(r => r.id === currentActiveRefereeId) || refereesData[0];
+            
+            container.innerHTML = eventsData.map(ev => {
+                const evAvail = ref.availabilities[ev.id] || { status: 'Full Time', sessions: {} };
+                const isPartTime = evAvail.status === 'Part Time';
+
+                let daysHtml = '';
+                if (isPartTime) {
+                    daysHtml = `<div class="mt-4 p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                        <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider">Select Available AM/PM Sessions:</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    `;
+                    ev.days.forEach(day => {
+                        const amKey = `${day}_AM`;
+                        const pmKey = `${day}_PM`;
+                        const amChecked = evAvail.sessions[amKey] ? 'checked' : '';
+                        const pmChecked = evAvail.sessions[pmKey] ? 'checked' : '';
+                        
+                        daysHtml += `
+                            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                                <div class="text-xs font-medium text-white mb-2">${day}</div>
+                                <div class="flex items-center space-x-4">
+                                    <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                                        <input type="checkbox" onchange="updateSessionState('${ev.id}', '${amKey}', this.checked)" ${amChecked} class="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0">
+                                        <span>AM Session</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                                        <input type="checkbox" onchange="updateSessionState('${ev.id}', '${pmKey}', this.checked)" ${pmChecked} class="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0">
+                                        <span>PM Session</span>
+                                    </label>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    daysHtml += `</div></div>`;
+                }
+
+                return `
+                    <div class="bg-slate-900/60 border border-slate-800 p-5 rounded-xl space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div>
+                                <h4 class="font-bold text-white text-base">${ev.name}</h4>
+                                <div class="text-xs text-slate-400 flex items-center gap-3 mt-1">
+                                    <span><i class="fa-regular fa-calendar text-amber-500 mr-1"></i> ${ev.dateRange}</span>
+                                    <span><i class="fa-solid fa-location-dot text-amber-500 mr-1"></i> ${ev.location}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <select onchange="updateEventStatus('${ev.id}', this.value)" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-amber-500">
+                                    <option value="Full Time" ${evAvail.status === 'Full Time' ? 'selected' : ''}>Available Full Time</option>
+                                    <option value="Part Time" ${evAvail.status === 'Part Time' ? 'selected' : ''}>Part Time (Select Sessions)</option>
+                                    <option value="Not Available" ${evAvail.status === 'Not Available' ? 'selected' : ''}>Not Available</option>
+                                </select>
+                            </div>
+                        </div>
+                        ${daysHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateEventStatus(eventId, status) {
+            const ref = refereesData.find(r => r.id === currentActiveRefereeId);
+            if (!ref.availabilities[eventId]) {
+                ref.availabilities[eventId] = { status: status, sessions: {} };
+            } else {
+                ref.availabilities[eventId].status = status;
+            }
+            renderRefereeEvents();
+            showToast("Availability status updated successfully.");
+        }
+
+        function updateSessionState(eventId, sessionKey, isChecked) {
+            const ref = refereesData.find(r => r.id === currentActiveRefereeId);
+            if (ref.availabilities[eventId]) {
+                ref.availabilities[eventId].sessions[sessionKey] = isChecked;
+            }
+            showToast("Session preference saved.");
+        }
+
+        function savePersonalProfile(e) {
+            e.preventDefault();
+            const ref = refereesData.find(r => r.id === currentActiveRefereeId);
+            if (ref) {
+                ref.name = document.getElementById('refName').value.trim();
+                ref.email = document.getElementById('refEmail').value.trim();
+                ref.phone = document.getElementById('refPhone').value.trim();
+                ref.region = document.getElementById('refRegion').value.trim();
+                
+                if (loggedInUser && loggedInUser.id === ref.id) {
+                    loggedInUser.name = ref.name;
+                    loggedInUser.email = ref.email;
+                }
+
+                // Update UI elements instantly
+                const nameEl = document.getElementById('currentUserName');
+                if (nameEl) nameEl.innerText = ref.name;
+
+                const nameBanner = document.getElementById('welcomeBannerName');
+                if (nameBanner) nameBanner.innerText = ref.name;
+
+                // Sync with Master Directory & Assignor Table
+                renderAdminTable();
+                renderAssignorTable();
+            }
+            showToast("Personal profile information saved successfully.");
+        }
+
+        // Assignor View Logic
+        function populateAssignorDropdowns() {
+            const select = document.getElementById('assignorEventSelect');
+            select.innerHTML = eventsData.map(ev => `<option value="${ev.id}">${ev.name}</option>`).join('');
+        }
+
+        function renderAssignorTable() {
+            const eventId = document.getElementById('assignorEventSelect').value;
+            const weaponFilter = document.getElementById('assignorWeaponFilter').value;
+            const statusFilter = document.getElementById('assignorStatusFilter').value;
+            const eventObj = eventsData.find(e => e.id === eventId);
+            
+            document.getElementById('assignorTableTitle').innerText = `Submissions for ${eventObj ? eventObj.name : 'Tournament'}`;
+
+            const tbody = document.getElementById('assignorTableBody');
+            
+            let filtered = refereesData.filter(ref => {
+                const av = ref.availabilities[eventId] || { status: 'Full Time', sessions: {} };
+                if (statusFilter !== 'ALL' && av.status !== statusFilter) return false;
+                if (weaponFilter !== 'ALL') {
+                    const hasWeapon = Object.values(ref.ratings).some(val => val !== 'Unrated');
+                    if (!hasWeapon) return false;
+                }
+                return true;
+            });
+
+            document.getElementById('assignorCountBadge').innerText = `${filtered.length} Officials Matched`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">No referees match the selected filters for this event.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(ref => {
+                const av = ref.availabilities[eventId] || { status: 'Full Time', sessions: {} };
+                let statusBadge = '';
+                if (av.status === 'Full Time') statusBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Full Time</span>';
+                else if (av.status === 'Part Time') statusBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Part Time</span>';
+                else statusBadge = '<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">Not Available</span>';
+
+                let sessionDetails = '-';
+                if (av.status === 'Part Time') {
+                    const activeSessions = Object.entries(av.sessions).filter(([k, v]) => v).map(([k]) => k.replace('_', ' '));
+                    sessionDetails = activeSessions.length > 0 ? activeSessions.join(', ') : 'No sessions selected';
+                } else if (av.status === 'Full Time') {
+                    sessionDetails = 'All event sessions';
+                }
+
+                return `
+                    <tr class="hover:bg-slate-900/40 transition">
+                        <td class="p-4">
+                            <div class="font-semibold text-white">${ref.name}</div>
+                            <div class="text-xs text-slate-400">${ref.email}</div>
+                        </td>
+                        <td class="p-4 text-xs text-slate-300">${ref.region}</td>
+                        <td class="p-4">
+                            <div class="flex gap-1 flex-wrap">
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">F: ${ref.ratings.foil}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">E: ${ref.ratings.epee}</span>
+                            </div>
+                        </td>
+                        <td class="p-4">${statusBadge}</td>
+                        <td class="p-4 text-xs text-slate-300 max-w-xs truncate">${sessionDetails}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="showToast('Roster invitation sent to ${ref.name}')" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-3 py-1.5 rounded-lg text-xs font-medium transition border border-slate-700">
+                                <i class="fa-solid fa-paper-plane mr-1"></i> Assign
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function exportAssignorRoster() {
+            showToast("Event referee roster CSV downloaded successfully.");
+        }
+
+        // Admin View Logic
+        function renderAdminTable() {
+            const tbody = document.getElementById('adminMasterTableBody');
+            tbody.innerHTML = refereesData.map(ref => `
+                <tr class="hover:bg-slate-900/40 transition">
+                    <td class="p-4">
+                        <div class="font-semibold text-white">${ref.name}</div>
+                        <div class="text-xs text-slate-400">${ref.email} • ${ref.region}</div>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">${ref.role}</span>
+                    </td>
+                    <td class="p-4 text-xs font-medium text-white">${ref.ratings.foil}</td>
+                    <td class="p-4 text-xs font-medium text-white">${ref.ratings.epee}</td>
+                    <td class="p-4 text-xs font-medium text-white">${ref.ratings.sabre}</td>
+                    <td class="p-4 text-xs font-medium text-white">${ref.ratings.para}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="openAdminEditModal('${ref.id}')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition border border-amber-500/30">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Certs
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderAdminTournamentsTable() {
+            const tbody = document.getElementById('adminTournamentsTableBody');
+            tbody.innerHTML = eventsData.map(ev => `
+                <tr class="hover:bg-slate-900/40 transition">
+                    <td class="p-4 font-semibold text-white">${ev.name}</td>
+                    <td class="p-4 text-xs text-slate-300">${ev.dateRange}</td>
+                    <td class="p-4 text-xs text-slate-300">${ev.location}</td>
+                    <td class="p-4 text-xs text-amber-400">${ev.days.join(', ')}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteTournament('${ev.id}')" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition border border-rose-500/30">
+                            <i class="fa-solid fa-trash mr-1"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openAddTournamentModal() {
+            const name = prompt("Enter Tournament Name (e.g., OFA Spring Youth Qualifier):");
+            if (!name) return;
+            const dateRange = prompt("Enter Date Range (e.g., Feb 20 - Feb 21, 2027):", "Feb 20 - Feb 21, 2027");
+            const location = prompt("Enter Venue / Location:", "Pan Am Sports Centre, Toronto");
+            const numDaysStr = prompt("How many competition days? (1 or 2):", "2");
+            
+            const numDays = parseInt(numDaysStr) || 1;
+            const days = [];
+            for (let i = 1; i <= numDays; i++) {
+                days.push(`Day ${i}`);
+            }
+
+            eventsData.push({
+                id: 'ev_' + Date.now(),
+                name: name,
+                dateRange: dateRange || 'TBD',
+                location: location || 'Ontario Venue',
+                days: days
+            });
+
+            renderRefereeEvents();
+            populateAssignorDropdowns();
+            renderAssignorTable();
+            renderAdminTournamentsTable();
+            showToast(`Tournament "${name}" created successfully.`);
+        }
+
+        function deleteTournament(evId) {
+            if (confirm("Are you sure you want to delete this tournament?")) {
+                const index = eventsData.findIndex(e => e.id === evId);
+                if (index !== -1) {
+                    eventsData.splice(index, 1);
+                    renderRefereeEvents();
+                    populateAssignorDropdowns();
+                    renderAssignorTable();
+                    renderAdminTournamentsTable();
+                    showToast("Tournament deleted successfully.");
+                }
+            }
+        }
+
+        function openAdminEditModal(refId) {
+            const ref = refereesData.find(r => r.id === refId);
+            document.getElementById('editModalRefId').value = ref.id;
+            document.getElementById('editModalName').value = ref.name;
+            document.getElementById('editModalFoil').value = ref.ratings.foil;
+            document.getElementById('editModalEpee').value = ref.ratings.epee;
+            document.getElementById('editModalSabre').value = ref.ratings.sabre;
+            document.getElementById('editModalPara').value = ref.ratings.para;
+            document.getElementById('adminEditModal').classList.remove('hidden');
+        }
+
+        function closeAdminEditModal() {
+            document.getElementById('adminEditModal').classList.add('hidden');
+        }
+
+        function saveAdminCertifications(e) {
+            e.preventDefault();
+            const refId = document.getElementById('editModalRefId').value;
+            const ref = refereesData.find(r => r.id === refId);
+            
+            ref.ratings.foil = document.getElementById('editModalFoil').value;
+            ref.ratings.epee = document.getElementById('editModalEpee').value;
+            ref.ratings.sabre = document.getElementById('editModalSabre').value;
+            ref.ratings.para = document.getElementById('editModalPara').value;
+
+            closeAdminEditModal();
+            renderAdminTable();
+            showToast(`Official certifications updated for ${ref.name}`);
+        }
+
+        function openAddUserModal() {
+            const name = prompt("Enter new staff full name:");
+            if (!name) return;
+            const roleChoice = prompt("Select role type for new account:\n1: Referee\n2: Assignor\n3: Admin", "1");
+            let role = 'referee';
+            if (roleChoice === '2' || roleChoice.toLowerCase().includes('assignor')) role = 'assignor';
+            else if (roleChoice === '3' || roleChoice.toLowerCase().includes('admin')) role = 'admin';
+
+            const email = prompt("Enter email address:", `${name.toLowerCase().replace(/[^a-z]/g, '.')}@fencingontario.ca`);
+            
+            refereesData.push({
+                id: 'user_' + Date.now(),
+                name: name,
+                email: email || 'staff@fencingontario.ca',
+                phone: '(416) 555-0100',
+                region: 'Ontario District',
+                role: role,
+                isFirstLogin: true, // Forces password change on first login
+                ratings: { foil: 'Provincial B', epee: 'Unrated', sabre: 'Unrated', para: 'Unrated' },
+                availabilities: {}
+            });
+            renderAdminTable();
+            showToast(`New ${role} account created for ${name} (Will require password change on first login)`);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 4000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
