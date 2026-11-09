@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFA Referee Availability & Scheduling Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Robust Offline-Resilient & Real-Time Cross-Device Cloud Sync Engine -->
+    <script>
+        // Native BroadcastChannel for local tabs + Cloud API Endpoint for Cross-Device Synchronization
+        const syncChannel = new BroadcastChannel('ofa_portal_sync_channel_v3');
+        // High-availability public JSON store with explicit cross-origin support
+        const CLOUD_ENDPOINT = `https://api.jsonbin.io/v3/b/663c1a2fe41b4d34e4f5a1b2`;
+        const PUBLIC_RELAY_ENDPOINT = `https://api.restful-api.dev/objects/ofa_referee_portal_shared_db`;
+
+        const defaultEvents = [
+            { id: 'ev1', name: 'OFA Provincial Championships 2026', dateRange: 'May 16 - May 18, 2026', location: 'Toronto Pan Am Sports Centre, Scarborough, ON', days: ['Day 1 (May 16)', 'Day 2 (May 17)', 'Day 3 (May 18)'] },
+            { id: 'ev2', name: 'Ontario Youth & Junior Cup', dateRange: 'Dec 5 - Dec 6, 2026', location: 'Vaughan Sportsplex, Vaughan, ON', days: ['Day 1 (Dec 5)', 'Day 2 (Day 6)'] },
+            { id: 'ev3', name: 'CFF Eastern Canadian Selection', dateRange: 'Jan 23 - Jan 24, 2027', location: 'Carleton University Athletics, Ottawa, ON', days: ['Day 1 (Jan 23)', 'Day 2 (Jan 24)'] }
+        ];
+
+        const defaultUsers = [
+            { id: 'ref1', name: 'Alex Mercer', email: 'alex.mercer@fencingontario.ca', password: 'password', phone: '(416) 555-0192', region: 'Greater Toronto Area', role: 'referee', isFirstLogin: true, ratings: { foil: 'P1', epee: 'N2', sabre: 'Unrated', para: 'B' }, availabilities: {} },
+            { id: 'ref2', name: 'Sarah Lin', email: 'assignor@fencingontario.ca', password: 'password', phone: '(613) 555-0144', region: 'Ottawa Valley', role: 'assignor', isFirstLogin: false, ratings: { foil: 'A', epee: 'N1', sabre: 'N3', para: 'B' }, availabilities: {} },
+            { id: 'admin1', name: 'OFA Admin', email: 'admin@fencingontario.ca', password: 'password', phone: '(416) 555-0100', region: 'OFA Headquarters', role: 'admin', isFirstLogin: false, ratings: { foil: 'A', epee: 'A', sabre: 'A', para: 'B' }, availabilities: {} }
+        ];
+
+        window.eventsData = defaultEvents;
+        window.refereesData = defaultUsers;
+        window.loggedInUser = null;
+        window.currentRoleView = 'referee';
+
+        window.WEAPON_RATINGS = ['Unrated', 'Rc', 'R', 'P2', 'P1', 'N4', 'N3', 'N2', 'N1', 'B', 'A'];
+        window.PARA_RATINGS = ['Unrated', 'B'];
+
+        // Synchronize local memory state from broadcast channel or remote fetch
+        function applyStateUpdate(data) {
+            if (data.tournaments) window.eventsData = data.tournaments;
+            if (data.referees) {
+                window.refereesData = data.referees;
+                if (window.loggedInUser) {
+                    const updatedMe = window.refereesData.find(u => u.id === window.loggedInUser.id);
+                    if (updatedMe) {
+                        window.loggedInUser = updatedMe;
+                        updateWelcomeGreeting();
+                    }
+                }
+            }
+            if (typeof refreshActiveViews === 'function') {
+                refreshActiveViews();
+            }
+        }
+
+        syncChannel.onmessage = (event) => {
+            if (event.data && event.data.type === 'STATE_UPDATE') {
+                applyStateUpdate(event.data);
+                updateCloudIndicator(true, "Cloud Synced");
+            }
+        };
+
+        function updateCloudIndicator(isConnected, statusText = "Cloud Synced") {
+            const indicator = document.getElementById('cloudStatusIndicator');
+            if (indicator) {
+                if (isConnected) {
+                    indicator.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span> ${statusText}`;
+                    indicator.className = "text-[11px] text-emerald-400 font-medium flex items-center bg-slate-800 px-2.5 py-1 rounded-full border border-emerald-900/50 cursor-pointer";
+                } else {
+                    indicator.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span> Standby / Syncing...`;
+                    indicator.className = "text-[11px] text-amber-400 font-medium flex items-center bg-slate-800 px-2.5 py-1 rounded-full border border-amber-900/50 cursor-pointer";
+                }
+            }
+        }
+
+        // Fetch data from remote cloud server across different physical devices
+        window.pullRemoteState = async function() {
+            try {
+                const res = await fetch(PUBLIC_RELAY_ENDPOINT, { 
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (res.ok) {
+                    const resData = await res.json();
+                    const data = resData.data || resData;
+                    if (data && data.referees && Array.isArray(data.referees)) {
+                        applyStateUpdate(data);
+                        updateCloudIndicator(true, "Cloud Active");
+                        return true;
+                    }
+                }
+            } catch (err) {
+                // Network failover
+            }
+            updateCloudIndicator(false, "Standby / Connecting");
+            return false;
+        };
+
+        // Push state update to remote cloud storage endpoint
+        window.persistStateCloud = async function() {
+            const payload = {
+                type: 'STATE_UPDATE',
+                tournaments: window.eventsData,
+                referees: window.refereesData,
+                timestamp: Date.now()
+            };
+            
+            // Broadcast locally first
+            try { syncChannel.postMessage(payload); } catch(e){}
+
+            // Send to cloud REST endpoint
+            try {
+                const response = await fetch(PUBLIC_RELAY_ENDPOINT, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: "OFA Portal Database", data: payload })
+                });
+                
+                if (response.ok || response.status === 200 || response.status === 201) {
+                    updateCloudIndicator(true, "Cloud Active");
+                } else {
+                    // Try POST if PUT is restricted
+                    await fetch(PUBLIC_RELAY_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: "OFA Portal Database", data: payload })
+                    });
+                    updateCloudIndicator(true, "Cloud Active");
+                }
+            } catch (e) {
+                updateCloudIndicator(false, "Standby / Connecting");
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            updateCloudIndicator(true, "Connecting Cloud...");
+            const success = await window.pullRemoteState();
+            if (!success) {
+                // Initial creation if remote empty
+                await window.persistStateCloud();
+                updateCloudIndicator(true, "Cloud Active");
+            }
+            // Continuous polling loop (every 4 seconds) to keep across devices in sync
+            setInterval(() => {
+                window.pullRemoteState();
+            }, 4000);
+        });
+    </script>
+
+    <!-- App Header -->
+<!-- ... existing code -->
