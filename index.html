@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFA Referee Availability & Scheduling Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Robust Offline-Resilient & Real-Time Cross-Device Cloud Sync Engine -->
+    <script>
+        const syncChannel = new BroadcastChannel('ofa_portal_sync_channel_v4');
+        const PUBLIC_RELAY_ENDPOINT = `https://api.restful-api.dev/objects/ofa_referee_portal_shared_db_v2`;
+
+        const defaultEvents = [
+            { id: 'ev1', name: 'OFA Provincial Championships 2026', dateRange: 'May 16 - May 18, 2026', location: 'Toronto Pan Am Sports Centre, Scarborough, ON', days: ['Day 1 (May 16)', 'Day 2 (May 17)', 'Day 3 (May 18)'] },
+            { id: 'ev2', name: 'Ontario Youth & Junior Cup', dateRange: 'Dec 5 - Dec 6, 2026', location: 'Vaughan Sportsplex, Vaughan, ON', days: ['Day 1 (Dec 5)', 'Day 2 (Dec 6)'] },
+            { id: 'ev3', name: 'CFF Eastern Canadian Selection', dateRange: 'Jan 23 - Jan 24, 2027', location: 'Carleton University Athletics, Ottawa, ON', days: ['Day 1 (Jan 23)', 'Day 2 (Jan 24)'] }
+        ];
+
+        const defaultUsers = [
+            { id: 'ref1', name: 'Alex Mercer', email: 'alex.mercer@fencingontario.ca', password: 'password', phone: '(416) 555-0192', region: 'Greater Toronto Area', role: 'referee', ratings: { foil: 'P1', epee: 'N2', sabre: 'Unrated', para: 'B' }, availabilities: {} },
+            { id: 'ref2', name: 'Sarah Lin', email: 'assignor@fencingontario.ca', password: 'password', phone: '(613) 555-0144', region: 'Ottawa Valley', role: 'assignor', ratings: { foil: 'A', epee: 'N1', sabre: 'N3', para: 'B' }, availabilities: {} },
+            { id: 'admin1', name: 'OFA Admin', email: 'admin@fencingontario.ca', password: 'password', phone: '(416) 555-0100', region: 'OFA Headquarters', role: 'admin', ratings: { foil: 'A', epee: 'A', sabre: 'A', para: 'B' }, availabilities: {} }
+        ];
+
+        window.eventsData = defaultEvents;
+        window.refereesData = defaultUsers;
+        window.loggedInUser = null;
+
+        window.WEAPON_RATINGS = ['Unrated', 'Rc', 'R', 'P2', 'P1', 'N4', 'N3', 'N2', 'N1', 'B', 'A'];
+        window.PARA_RATINGS = ['Unrated', 'B'];
+
+        function applyStateUpdate(data) {
+            if (data.tournaments) window.eventsData = data.tournaments;
+            if (data.referees) {
+                window.refereesData = data.referees;
+                if (window.loggedInUser) {
+                    const updatedMe = window.refereesData.find(u => u.id === window.loggedInUser.id);
+                    if (updatedMe) {
+                        window.loggedInUser = updatedMe;
+                        updateWelcomeGreeting();
+                    }
+                }
+            }
+            if (typeof refreshActiveViews === 'function') {
+                refreshActiveViews();
+            }
+        }
+
+        syncChannel.onmessage = (event) => {
+            if (event.data && event.data.type === 'STATE_UPDATE') {
+                applyStateUpdate(event.data);
+                updateCloudIndicator(true, "Cloud Synced");
+            }
+        };
+
+        function updateCloudIndicator(isConnected, statusText = "Cloud Synced") {
+            const indicator = document.getElementById('cloudStatusIndicator');
+            if (indicator) {
+                if (isConnected) {
+                    indicator.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span> ${statusText}`;
+                    indicator.className = "text-[11px] text-emerald-400 font-medium flex items-center bg-slate-800 px-2.5 py-1 rounded-full border border-emerald-900/50 cursor-pointer";
+                } else {
+                    indicator.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span> Standby / Syncing...`;
+                    indicator.className = "text-[11px] text-amber-400 font-medium flex items-center bg-slate-800 px-2.5 py-1 rounded-full border border-amber-900/50 cursor-pointer";
+                }
+            }
+        }
+
+        window.pullRemoteState = async function() {
+            try {
+                const res = await fetch(PUBLIC_RELAY_ENDPOINT, { 
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (res.ok) {
+                    const resData = await res.json();
+                    const data = resData.data || resData;
+                    if (data && data.referees && Array.isArray(data.referees)) {
+                        applyStateUpdate(data);
+                        updateCloudIndicator(true, "Cloud Active");
+                        return true;
+                    }
+                }
+            } catch (err) {
+                // Network failover
+            }
+            updateCloudIndicator(false, "Standby / Connecting");
+            return false;
+        };
+
+        window.persistStateCloud = async function() {
+            const payload = {
+                type: 'STATE_UPDATE',
+                tournaments: window.eventsData,
+                referees: window.refereesData,
+                timestamp: Date.now()
+            };
+            
+            try { syncChannel.postMessage(payload); } catch(e){}
+
+            try {
+                const response = await fetch(PUBLIC_RELAY_ENDPOINT, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: "OFA Portal Database V2", data: payload })
+                });
+                
+                if (response.ok || response.status === 200 || response.status === 201) {
+                    updateCloudIndicator(true, "Cloud Active");
+                } else {
+                    await fetch(PUBLIC_RELAY_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: "OFA Portal Database V2", data: payload })
+                    });
+                    updateCloudIndicator(true, "Cloud Active");
+                }
+            } catch (e) {
+                updateCloudIndicator(false, "Standby / Connecting");
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            updateCloudIndicator(true, "Connecting Cloud...");
+            const success = await window.pullRemoteState();
+            if (!success) {
+                await window.persistStateCloud();
+                updateCloudIndicator(true, "Cloud Active");
+            }
+        });
+    </script>
+
+    <!-- App Header -->
+    <header class="gradient-header text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2.5 rounded-xl shadow-inner text-white font-bold text-xl">
+                    <i class="fa-solid fa-fencing"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">OFA Referee Portal</h1>
+                    <p class="text-xs text-slate-400">Ontario Fencing Association • Official Scheduling & Availability</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Cloud Status Indicator -->
+                <div id="cloudStatusIndicator" onclick="window.pullRemoteState()" title="Click to force sync" class="text-[11px] text-amber-400 font-medium flex items-center bg-slate-800 px-2.5 py-1 rounded-full border border-amber-900/50 cursor-pointer">
+                    <span class="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1.5"></span> Connecting Cloud...
+                </div>
+
+                <div id="userSessionBadge" class="hidden items-center space-x-3 bg-slate-800/80 px-3.5 py-1.5 rounded-xl border border-slate-700">
+                    <div class="text-right">
+                        <div id="headerUserName" class="text-xs font-semibold text-slate-200">Alex Mercer</div>
+                        <div id="headerUserRole" class="text-[10px] text-blue-400 uppercase tracking-wider font-bold">Referee</div>
+                    </div>
+                    <button onclick="logoutUser()" class="bg-slate-700 hover:bg-red-600 text-slate-200 hover:text-white px-2.5 py-1 rounded-lg text-xs transition">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+        
+        <!-- Login View -->
+        <div id="loginSection" class="max-w-md mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden mt-10">
+            <div class="p-6 bg-slate-900 text-white text-center">
+                <h2 class="text-xl font-bold">Portal Sign In</h2>
+                <p class="text-xs text-slate-400 mt-1">Access your referee schedule & tournament availability</p>
+            </div>
+            <form onsubmit="handleLogin(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Email Address</label>
+                    <input type="email" id="loginEmail" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="e.g. alex.mercer@fencingontario.ca">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Password</label>
+                    <input type="password" id="loginPassword" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-lg shadow-blue-600/20">
+                    Sign In to Portal
+                </button>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600 mt-4 space-y-1">
+                    <p class="font-bold text-slate-700">Quick Test Credentials:</p>
+                    <p>• Referee: <span class="font-mono text-blue-600">alex.mercer@fencingontario.ca</span> / <span class="font-mono">password</span></p>
+                    <p>• Assignor: <span class="font-mono text-blue-600">assignor@fencingontario.ca</span> / <span class="font-mono">password</span></p>
+                    <p>• Admin: <span class="font-mono text-blue-600">admin@fencingontario.ca</span> / <span class="font-mono">password</span></p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Dashboard View (Hidden until login) -->
+        <div id="dashboardSection" class="hidden space-y-6">
+            
+            <!-- Navigation Tabs -->
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div class="flex space-x-2">
+                    <button onclick="switchTab('availability')" id="tabNavAvailability" class="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white transition shadow-sm">
+                        <i class="fa-solid fa-calendar-days mr-2"></i> My Availability
+                    </button>
+                    <button onclick="switchTab('profile')" id="tabNavProfile" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-user-gear mr-2"></i> Profile & Ratings
+                    </button>
+                    <button onclick="switchTab('assignor')" id="tabNavAssignor" class="hidden px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-clipboard-list mr-2"></i> Assignor Desk
+                    </button>
+                    <button onclick="switchTab('admin')" id="tabNavAdmin" class="hidden px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-shield-halved mr-2"></i> Admin Panel
+                    </button>
+                </div>
+                <div id="welcomeGreeting" class="text-sm font-medium text-slate-600">
+                    Welcome back, <span class="font-bold text-slate-900">Referee</span>
+                </div>
+            </div>
+
+            <!-- Tab 1: Availability Management -->
+            <div id="contentAvailability" class="space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-900 mb-1">Tournament Availability & Travel Submissions</h2>
+                    <p class="text-xs text-slate-500 mb-6">Select your availability for upcoming OFA sanctioned tournaments. Changes sync instantly across all devices.</p>
+                    
+                    <div id="tournamentsListContainer" class="space-y-6">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Profile & Ratings -->
+            <div id="contentProfile" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-2xl mx-auto">
+                    <h2 class="text-lg font-bold text-slate-900 mb-1">Referee Profile & Certification Ratings</h2>
+                    <p class="text-xs text-slate-500 mb-6">Update your contact details, home region, and certified weapon ratings.</p>
+                    
+                    <form onsubmit="handleSaveProfile(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Full Name</label>
+                                <input type="text" id="profName" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Email Address</label>
+                                <input type="email" id="profEmail" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm bg-slate-50">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Phone Number</label>
+                                <input type="text" id="profPhone" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Home Region</label>
+                                <input type="text" id="profRegion" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-4 mt-4">
+                            <h3 class="text-sm font-bold text-slate-800 mb-3">Weapon Ratings</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">FOIL</label>
+                                    <select id="ratingFoil" class="w-full p-2 rounded-lg border border-slate-300 text-xs">
+                                        <!-- Options injected -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">ÉPÉE</label>
+                                    <select id="ratingEpee" class="w-full p-2 rounded-lg border border-slate-300 text-xs">
+                                        <!-- Options injected -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">SABRE</label>
+                                    <select id="ratingSabre" class="w-full p-2 rounded-lg border border-slate-300 text-xs">
+                                        <!-- Options injected -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">PARA-FENCING</label>
+                                    <select id="ratingPara" class="w-full p-2 rounded-lg border border-slate-300 text-xs">
+                                        <!-- Options injected -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-4 mt-4">
+                            <h3 class="text-sm font-bold text-slate-800 mb-2">Change Password</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">New Password</label>
+                                    <input type="password" id="profNewPassword" placeholder="Leave blank to keep current" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 flex justify-end">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition">
+                                Save Profile Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tab 3: Assignor Desk -->
+            <div id="contentAssignor" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-900 mb-1">Assignor Review & Roster Management</h2>
+                    <p class="text-xs text-slate-500 mb-6">Review referee availability across tournaments and manage match assignments.</p>
+                    
+                    <div class="flex gap-3 mb-6">
+                        <select id="assignorTournamentSelect" onchange="renderAssignorView()" class="p-2.5 rounded-xl border border-slate-300 text-sm bg-slate-50 font-medium">
+                            <!-- Populated via JS -->
+                        </select>
+                    </div>
+
+                    <div id="assignorTableContainer" class="overflow-x-auto">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Admin Panel -->
+            <div id="contentAdmin" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-bold text-slate-900 mb-1">OFA Administrator Dashboard</h2>
+                    <p class="text-xs text-slate-500 mb-6">Manage referee accounts, assign roles, and add new OFA sanctioned tournaments.</p>
+                    
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Registered Referees</h3>
+                        <button onclick="openAddRefereeModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold transition">
+                            <i class="fa-solid fa-user-plus mr-1"></i> Add Referee
+                        </button>
+                    </div>
+
+                    <div id="adminRefereesTable" class="overflow-x-auto">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto bg-slate-900 text-slate-400 py-6 text-center text-xs border-t border-slate-800">
+        <p>© 2026 Ontario Fencing Association (OFA). Real-time cloud sync active across all connected referee devices.</p>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script>
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('loginPassword').value;
+
+            const user = window.refereesData.find(u => u.email.toLowerCase() === email && u.password === pass);
+            if (user) {
+                window.loggedInUser = user;
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                document.getElementById('userSessionBadge').classList.remove('hidden');
+                document.getElementById('headerUserName').innerText = user.name;
+                document.getElementById('headerUserRole').innerText = user.role.toUpperCase();
+
+                // Role-based navigation tab visibility
+                const assignorTab = document.getElementById('tabNavAssignor');
+                const adminTab = document.getElementById('tabNavAdmin');
+                
+                assignorTab.classList.add('hidden');
+                adminTab.classList.add('hidden');
+
+                if (user.role === 'assignor') {
+                    assignorTab.classList.remove('hidden');
+                } else if (user.role === 'admin') {
+                    // Admins can view all tabs (Referee, Assignor, Admin)
+                    assignorTab.classList.remove('hidden');
+                    adminTab.classList.remove('hidden');
+                }
+
+                updateWelcomeGreeting();
+                renderAllTabs();
+            } else {
+                alert('Invalid email or password. Please check test credentials.');
+            }
+        }
+
+        function logoutUser() {
+            window.loggedInUser = null;
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('userSessionBadge').classList.add('hidden');
+            document.getElementById('tabNavAssignor').classList.add('hidden');
+            document.getElementById('tabNavAdmin').classList.add('hidden');
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function updateWelcomeGreeting() {
+            if (!window.loggedInUser) return;
+            document.getElementById('welcomeGreeting').innerHTML = `Welcome back, <span class="font-bold text-slate-900">${window.loggedInUser.name}</span> (${window.loggedInUser.role})`;
+        }
+
+        function switchTab(tabKey) {
+            ['availability', 'profile', 'assignor', 'admin'].forEach(t => {
+                const content = document.getElementById(`content${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                const nav = document.getElementById(`tabNav${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if (content) content.classList.add('hidden');
+                if (nav) {
+                    nav.className = "px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 transition";
+                }
+            });
+
+            const activeContent = document.getElementById(`content${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}`);
+            const activeNav = document.getElementById(`tabNav${tabKey.charAt(0).toUpperCase() + tabKey.slice(1)}`);
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeNav) {
+                activeNav.className = "px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white transition shadow-sm";
+            }
+            renderAllTabs();
+        }
+
+        function renderAllTabs() {
+            renderAvailabilityView();
+            renderProfileView();
+            renderAssignorView();
+            renderAdminView();
+        }
+
+        function refreshActiveViews() {
+            if (window.loggedInUser) {
+                renderAllTabs();
+            }
+        }
+
+        // Availability View
+        function renderAvailabilityView() {
+            const container = document.getElementById('tournamentsListContainer');
+            if (!container || !window.loggedInUser) return;
+
+            let html = '';
+            window.eventsData.forEach(ev => {
+                const userAvail = (window.loggedInUser.availabilities && window.loggedInUser.availabilities[ev.id]) || {};
+                const status = userAvail.status || 'unanswered';
+
+                html += `
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${status === 'available' ? 'bg-emerald-100 text-emerald-800' : status === 'unavailable' ? 'bg-red-100 text-red-800' : 'bg-slate-200 text-slate-700'}">
+                                ${status === 'available' ? 'Available' : status === 'unavailable' ? 'Unavailable' : 'Not Answered'}
+                            </span>
+                            <h3 class="text-base font-bold text-slate-900 mt-2">${ev.name}</h3>
+                            <p class="text-xs text-slate-500"><i class="fa-solid fa-calendar mr-1"></i> ${ev.dateRange} • <i class="fa-solid fa-location-dot ml-1 mr-1"></i> ${ev.location}</p>
+                        </div>
+                        <div class="flex items-center space-x-2 w-full md:w-auto">
+                            <button onclick="setAvailability('${ev.id}', 'available')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-semibold ${status === 'available' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'} transition">
+                                <i class="fa-solid fa-check mr-1"></i> Available
+                            </button>
+                            <button onclick="setAvailability('${ev.id}', 'unavailable')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-semibold ${status === 'unavailable' ? 'bg-red-600 text-white shadow-md' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'} transition">
+                                <i class="fa-solid fa-xmark mr-1"></i> Unavailable
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function setAvailability(eventId, status) {
+            if (!window.loggedInUser.availabilities) window.loggedInUser.availabilities = {};
+            window.loggedInUser.availabilities[eventId] = { status: status, updatedAt: Date.now() };
+
+            const idx = window.refereesData.findIndex(r => r.id === window.loggedInUser.id);
+            if (idx !== -1) {
+                window.refereesData[idx] = window.loggedInUser;
+            }
+
+            await window.persistStateCloud();
+            renderAvailabilityView();
+        }
+
+        // Profile View
+        function renderProfileView() {
+            if (!window.loggedInUser) return;
+            document.getElementById('profName').value = window.loggedInUser.name || '';
+            document.getElementById('profEmail').value = window.loggedInUser.email || '';
+            document.getElementById('profPhone').value = window.loggedInUser.phone || '';
+            document.getElementById('profRegion').value = window.loggedInUser.region || '';
+
+            populateRatingSelect('ratingFoil', window.WEAPON_RATINGS, window.loggedInUser.ratings?.foil);
+            populateRatingSelect('ratingEpee', window.WEAPON_RATINGS, window.loggedInUser.ratings?.epee);
+            populateRatingSelect('ratingSabre', window.WEAPON_RATINGS, window.loggedInUser.ratings?.sabre);
+            populateRatingSelect('ratingPara', window.PARA_RATINGS, window.loggedInUser.ratings?.para);
+        }
+
+        function populateRatingSelect(elementId, ratingsArray, selectedValue) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.innerHTML = ratingsArray.map(r => `<option value="${r}" ${r === selectedValue ? 'selected' : ''}>${r}</option>`).join('');
+        }
+
+        async function handleSaveProfile(e) {
+            e.preventDefault();
+            if (!window.loggedInUser) return;
+
+            window.loggedInUser.name = document.getElementById('profName').value;
+            window.loggedInUser.phone = document.getElementById('profPhone').value;
+            window.loggedInUser.region = document.getElementById('profRegion').value;
+            
+            const newPass = document.getElementById('profNewPassword').value;
+            if (newPass.trim() !== '') {
+                window.loggedInUser.password = newPass.trim();
+            }
+
+            window.loggedInUser.ratings = {
+                foil: document.getElementById('ratingFoil').value,
+                epee: document.getElementById('ratingEpee').value,
+                sabre: document.getElementById('ratingSabre').value,
+                para: document.getElementById('ratingPara').value
+            };
+
+            const idx = window.refereesData.findIndex(r => r.id === window.loggedInUser.id);
+            if (idx !== -1) {
+                window.refereesData[idx] = window.loggedInUser;
+            }
+
+            document.getElementById('headerUserName').innerText = window.loggedInUser.name;
+            await window.persistStateCloud();
+            alert('Profile saved and synced successfully to the cloud!');
+        }
+
+        // Assignor View
+        function renderAssignorView() {
+            const select = document.getElementById('assignorTournamentSelect');
+            if (!select) return;
+
+            select.innerHTML = window.eventsData.map(ev => `<option value="${ev.id}">${ev.name}</option>`).join('');
+            const selectedEventId = select.value || window.eventsData[0]?.id;
+
+            const container = document.getElementById('assignorTableContainer');
+            if (!container) return;
+
+            let html = `
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                            <th class="p-3">Referee Name</th>
+                            <th class="p-3">Region</th>
+                            <th class="p-3">Foil / Épée / Sabre</th>
+                            <th class="p-3">Availability Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-xs">
+            `;
+
+            window.refereesData.forEach(ref => {
+                const av = (ref.availabilities && ref.availabilities[selectedEventId]?.status) || 'unanswered';
+                html += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-semibold text-slate-800">${ref.name}</td>
+                        <td class="p-3 text-slate-600">${ref.region}</td>
+                        <td class="p-3 text-slate-600 font-mono">${ref.ratings?.foil || 'Unrated'} / ${ref.ratings?.epee || 'Unrated'} / ${ref.ratings?.sabre || 'Unrated'}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${av === 'available' ? 'bg-emerald-100 text-emerald-800' : av === 'unavailable' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-600'}">
+                                ${av}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        // Admin View
+        function renderAdminView() {
+            const container = document.getElementById('adminRefereesTable');
+            if (!container) return;
+
+            let html = `
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 uppercase text-[11px] tracking-wider border-b border-slate-200">
+                            <th class="p-3">Name</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Role</th>
+                            <th class="p-3">Region</th>
+                            <th class="p-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-xs">
+            `;
+
+            window.refereesData.forEach(ref => {
+                html += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-semibold text-slate-800">${ref.name}</td>
+                        <td class="p-3 text-slate-600">${ref.email}</td>
+                        <td class="p-3 uppercase font-bold text-blue-600">${ref.role}</td>
+                        <td class="p-3 text-slate-600">${ref.region}</td>
+                        <td class="p-3 text-right">
+                            <select onchange="updateUserRole('${ref.id}', this.value)" class="p-1 rounded border border-slate-300 text-xs bg-white">
+                                <option value="referee" ${ref.role === 'referee' ? 'selected' : ''}>Referee</option>
+                                <option value="assignor" ${ref.role === 'assignor' ? 'selected' : ''}>Assignor</option>
+                                <option value="admin" ${ref.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        async function updateUserRole(userId, newRole) {
+            const targetRef = window.refereesData.find(r => r.id === userId);
+            if (targetRef) {
+                targetRef.role = newRole;
+                await window.persistStateCloud();
+                renderAdminView();
+            }
+        }
+
+        function openAddRefereeModal() {
+            const name = prompt("Enter Referee Full Name:");
+            if (!name) return;
+            const email = prompt("Enter Email Address:");
+            if (!email) return;
+            const roleInput = prompt("Enter Role (referee, assignor, or admin):", "referee");
+            if (!roleInput) return;
+
+            const newRef = {
+                id: 'ref_' + Date.now(),
+                name: name,
+                email: email,
+                password: 'password',
+                phone: '(416) 555-0199',
+                region: 'Ontario',
+                role: ['referee', 'assignor', 'admin'].includes(roleInput.toLowerCase()) ? roleInput.toLowerCase() : 'referee',
+                ratings: { foil: 'Unrated', epee: 'Unrated', sabre: 'Unrated', para: 'Unrated' },
+                availabilities: {}
+            };
+
+            window.refereesData.push(newRef);
+            window.persistStateCloud();
+            renderAdminView();
+            alert('User profile created successfully!');
+        }
+    </script>
+</body>
+</html>
