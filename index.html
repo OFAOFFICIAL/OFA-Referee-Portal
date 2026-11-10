@@ -63,8 +63,7 @@
 
 <script>
 /* Supabase > Project Settings > API. The anon key is meant to be public; row-level security protects the data. */
-const CFG = { URL: 'https://drshtcvadkznkpeecgdi.supabase.co/rest/v1/
-', KEY: 'sb_publishable_fQiq5V28jk-oPuC9Mu6o1w_E1W0VmXh' };
+const CFG = { URL: 'https://drshtcvadkznkpeecgdi.supabase.co', KEY: 'sb_publishable_fQiq5V28jk-oPuC9Mu6o1w_E1W0VmXh' };
 const configured = !CFG.URL.includes('YOUR-PROJECT');
 const sb = configured ? supabase.createClient(CFG.URL, CFG.KEY) : null;
 
