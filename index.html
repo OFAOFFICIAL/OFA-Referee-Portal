@@ -19,6 +19,16 @@
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25) !important;
     background-color: #f8fff9 !important;
   }
+
+  /* Print only the open modal (the rooming list), not the page behind it */
+  @media print {
+    body > *:not(#modal) { display: none !important; }
+    body { background: #fff !important; }
+    #modal { position: static !important; display: block !important; background: none !important; padding: 0 !important; overflow: visible !important; }
+    #modal > div { box-shadow: none !important; max-width: none !important; margin: 0 !important; }
+    #modal .print-scroll { max-height: none !important; overflow: visible !important; }
+    #modal .no-print { display: none !important; }
+  }
 </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
@@ -196,13 +206,25 @@ const avOf = (uid, evId, day) => S.av.find(r => r.user_id === uid && r.event_id 
 
 /* Helper to compute the clean night before start date (-1 day) */
 function getAccomDays(ev) {
-  if (!ev || !ev.date_range) return ['Night before', ...(ev.days || [])];
-  
+  if (!ev || !ev.date_range) return ['Night before', ...(ev?.days || [])];
+
   const rawStart = ev.date_range.split('-')[0].trim();
   let nightBeforeLabel = 'Night before (' + rawStart + ')';
 
   try {
-    const parsedDate = new Date(rawStart + (rawStart.includes('2026') || rawStart.includes('2025') ? '' : ' 2026'));
+    // Year: from the start date, else from anywhere in the range ("Mar 1-2, 2028"),
+    // else the first occurrence on or after the day the event was created.
+    const YEAR = /\b(?:19|20)\d{2}\b/;
+    const rangeYear = (ev.date_range.match(YEAR) || [])[0];
+    let parsedDate;
+    if (YEAR.test(rawStart)) parsedDate = new Date(rawStart);
+    else if (rangeYear) parsedDate = new Date(rawStart + ' ' + rangeYear);
+    else {
+      const base = ev.created_at ? new Date(ev.created_at) : new Date();
+      parsedDate = new Date(rawStart + ' ' + base.getFullYear());
+      base.setHours(0, 0, 0, 0);
+      if (!isNaN(parsedDate) && parsedDate < base) parsedDate.setFullYear(parsedDate.getFullYear() + 1);
+    }
     if (!isNaN(parsedDate)) {
       parsedDate.setDate(parsedDate.getDate() - 1);
       const options = { month: 'short', day: 'numeric' };
@@ -240,14 +262,14 @@ function render() {
   $('hName').textContent = u.name; $('hRole').textContent = u.role;
   $('greet').innerHTML = `Signed in as <span class="font-bold text-slate-900">${esc(u.name)}</span> (${esc(u.role)})`;
   $('tabs').innerHTML = TABS.filter(t => t[3].includes(u.role)).map(t =>
-    `<button onclick="go('${t[0]}')" class="px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === t[0] ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}"><i class="fa-solid ${t[1]} mr-2"></i>${t[2]}</button>`).join('');
+    `<button data-tab="${t[0]}" onclick="go(this.dataset.tab)" class="px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === t[0] ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}"><i class="fa-solid ${t[1]} mr-2"></i>${t[2]}</button>`).join('');
   ['availability', 'profile', 'directory', 'assignor', 'admin'].forEach(t => $('v-' + t).classList.toggle('hidden', t !== tab));
   ({ availability: rAvail, profile: rProfile, directory: rDirectory, assignor: rAssignor, admin: rAdmin })[tab]();
 }
 
 /* ===== Availability (per day) ===== */
 const DAYBTN = { yes: ['bg-emerald-600', '<i class="fa-solid fa-check"></i> Full', 'Full day'], am: ['bg-sky-600', 'AM', 'Morning only'], pm: ['bg-sky-600', 'PM', 'Afternoon only'], no: ['bg-red-600', '<i class="fa-solid fa-xmark"></i>', 'Unavailable'] };
-const dayBtns = (evId, i, v, disabled) => Object.entries(DAYBTN).map(([k, [on, label, tip]]) => `<button ${disabled ? 'disabled' : ''} onclick="setDay('${evId}',${i},'${k}')" title="${tip}" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${v === k ? on + ' text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed">${label}</button>`).join('');
+const dayBtns = (evId, i, v, disabled) => Object.entries(DAYBTN).map(([k, [on, label, tip]]) => `<button ${disabled ? 'disabled' : ''} data-ev="${esc(evId)}" data-i="${i}" data-k="${k}" onclick="setDay(this.dataset.ev, +this.dataset.i, this.dataset.k)" title="${tip}" class="px-2.5 py-1 rounded-lg text-xs font-semibold ${v === k ? on + ' text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed">${label}</button>`).join('');
 
 function rAvail() {
   const u = S.me;
@@ -275,8 +297,8 @@ function rAvail() {
       ${assigned ? '<span class="ml-1 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">Assigned</span>' : ''}
       <h3 class="text-base font-bold text-slate-900 mt-2">${esc(ev.name)}</h3>
       <p class="text-xs text-slate-500"><i class="fa-solid fa-calendar mr-1"></i>${esc(ev.date_range)} <i class="fa-solid fa-location-dot ml-2 mr-1"></i>${esc(ev.location)}</p></div>
-      <div class="flex gap-2 self-start"><button ${eventBlocked ? 'disabled' : ''} onclick="setAll('${ev.id}','yes')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed">All days available</button>
-      <button ${eventBlocked ? 'disabled' : ''} onclick="setAll('${ev.id}','no')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed">All days unavailable</button></div></div>
+      <div class="flex gap-2 self-start"><button ${eventBlocked ? 'disabled' : ''} data-ev="${esc(ev.id)}" onclick="setAll(this.dataset.ev, 'yes')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed">All days available</button>
+      <button ${eventBlocked ? 'disabled' : ''} data-ev="${esc(ev.id)}" onclick="setAll(this.dataset.ev, 'no')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed">All days unavailable</button></div></div>
      
      ${assigned ? `<div class="mb-3 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 font-medium"><i class="fa-solid fa-circle-info mr-1"></i> You have been assigned to this tournament. Availability and accommodation are now locked.</div>` : ''}
 
@@ -286,7 +308,7 @@ function rAvail() {
      <!-- Accommodation Section -->
      <div class="bg-white rounded-xl border border-slate-200 p-4">
       <label class="flex items-center space-x-2 ${eventBlocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} select-none">
-       <input type="checkbox" ${eventBlocked ? 'disabled' : ''} ${isAccomNeeded ? 'checked' : ''} onchange="toggleAccomNeeded('${ev.id}', this.checked)" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+       <input type="checkbox" ${eventBlocked ? 'disabled' : ''} ${isAccomNeeded ? 'checked' : ''} data-ev="${esc(ev.id)}" onchange="toggleAccomNeeded(this.dataset.ev, this.checked)" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
        <span class="text-xs font-bold text-slate-800"><i class="fa-solid fa-bed text-blue-600 mr-1"></i> Accommodation required for this tournament</span>
       </label>
       <div id="accom-box-${ev.id}" class="${isAccomNeeded ? '' : 'hidden'} mt-3 pt-3 border-t border-slate-100 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -294,7 +316,7 @@ function rAvail() {
        ${accomDays.map((accDay, idx) => {
          const checked = accomOf(u.id, ev.id, accDay);
          return `<label class="flex items-center space-x-2 text-xs text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-200 ${eventBlocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}">
-          <input type="checkbox" ${eventBlocked ? 'disabled' : ''} ${checked ? 'checked' : ''} onchange="setAccomDay('${ev.id}','${esc(accDay)}', this.checked)" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300">
+          <input type="checkbox" ${eventBlocked ? 'disabled' : ''} ${checked ? 'checked' : ''} data-ev="${esc(ev.id)}" data-day="${esc(accDay)}" onchange="setAccomDay(this.dataset.ev, this.dataset.day, this.checked)" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300">
           <span>${esc(accDay)}</span>
          </label>`;
        }).join('')}
@@ -325,15 +347,11 @@ async function toggleAccomNeeded(evId, needed) {
   const ev = S.events.find(e => e.id === evId);
   const accomDays = getAccomDays(ev);
   const uid = S.uid;
-  if (needed) {
-    const rows = accomDays.map(accDay => ({ user_id: uid, event_id: evId, day: 'ACCOM:' + accDay, status: 'yes' }));
-    await sb.from('availability').upsert(rows, { onConflict: 'user_id,event_id,day' });
-  } else {
-    for (const accDay of accomDays) {
-      await sb.from('availability').delete().match({ user_id: uid, event_id: evId, day: 'ACCOM:' + accDay });
-    }
-  }
-  refresh();
+  const r = needed
+    ? await sb.from('availability').upsert(accomDays.map(accDay => ({ user_id: uid, event_id: evId, day: 'ACCOM:' + accDay, status: 'yes' })), { onConflict: 'user_id,event_id,day' })
+    : await sb.from('availability').delete().match({ user_id: uid, event_id: evId }).like('day', 'ACCOM:%');
+  fail(r);
+  refresh(); // re-render either way so the checkbox matches what is actually saved
 }
 
 async function setAccomDay(evId, accDay, checked) {
@@ -381,7 +399,7 @@ function rProfile() {
    <div class="border-t border-slate-200 pt-4">
     <h3 class="text-sm font-bold text-slate-800 mb-1"><i class="fa-solid fa-users text-blue-600 mr-1.5"></i> Roommate Preferences</h3>
     <p class="text-xs text-slate-500 mb-1">List other officials in order of preference (1 = top choice / most preferred, 5 = lowest choice).</p>
-    <p class="text-xs font-bold underline text-red-600 mb-3">Please ensure roommate preference's are spelled correctly</p>
+    <p class="text-xs font-bold underline text-red-600 mb-3">Please ensure roommate preferences are spelled correctly</p>
     <div class="space-y-2">
      ${[1, 2, 3, 4, 5].map(num => `
       <div class="flex items-center gap-2">
@@ -543,7 +561,7 @@ function rAssignor() {
      <td class="p-3">${accomDisplay}</td>
      <td class="p-3">${mealDisplay}</td>
      <td class="p-3">${pill(s)}</td>
-     <td class="p-3 text-right"><button ${isAssignDisabled ? 'disabled' : ''} onclick="toggleAssign('${ev.id}','${r.id}',${on})" title="${rcOrUnratedOnly && !isAdmin ? 'Only admins can hire referees with Unrated or Rc ratings only.' : ''}" class="px-3 py-1 rounded-lg text-xs font-semibold ${on ? 'bg-blue-600 text-white' : 'border border-slate-300 hover:bg-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed">${on ? 'Assigned' : 'Assign'}</button></td></tr>`;
+     <td class="p-3 text-right"><button ${isAssignDisabled ? 'disabled' : ''} data-ev="${esc(ev.id)}" data-user="${esc(r.id)}" data-on="${on}" onclick="toggleAssign(this.dataset.ev, this.dataset.user, this.dataset.on === 'true')" title="${rcOrUnratedOnly && !isAdmin ? 'Only admins can hire referees with Unrated or Rc ratings only.' : ''}" class="px-3 py-1 rounded-lg text-xs font-semibold ${on ? 'bg-blue-600 text-white' : 'border border-slate-300 hover:bg-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed">${on ? 'Assigned' : 'Assign'}</button></td></tr>`;
   }).join('');
 
   $('v-assignor').innerHTML = card(`<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -553,11 +571,11 @@ function rAssignor() {
    </div>
    <button onclick="openRoomingModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2"><i class="fa-solid fa-bed"></i> Generate Rooming List</button>
   </div>
-  <p class="text-xs font-bold underline text-slate-800 mb-4">Referees holding only Rc and Unrated licenses may only be hired by the OFA Candidate coordinator or after consultation with the OFA CAN COORD. A minimum of of one full R license is required to be hired at sanctioned OFA events by Assignors/Organizers.</p>
+  <p class="text-xs font-bold underline text-slate-800 mb-4">Referees holding only Rc and Unrated licenses may only be hired by the OFA Candidate coordinator or after consultation with the OFA CAN COORD. A minimum of one full R license is required to be hired at sanctioned OFA events by Assignors/Organizers.</p>
   <div class="flex flex-wrap gap-4 mb-5">
    <div>
     <label class="block text-[11px] font-bold text-slate-500 mb-1 uppercase">Tournament</label>
-    <select onchange="aEv=this.value;rAssignor()" class="p-2.5 rounded-xl border border-slate-300 text-sm bg-slate-50 font-medium">${S.events.map(e => `<option value="${e.id}" ${e.id === aEv ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+    <select onchange="aEv=this.value;rAssignor()" class="p-2.5 rounded-xl border border-slate-300 text-sm bg-slate-50 font-medium">${S.events.map(e => `<option value="${esc(e.id)}" ${e.id === aEv ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
    </div>
    <div>
     <label class="block text-[11px] font-bold text-slate-500 mb-1 uppercase">Sort By</label>
@@ -680,11 +698,11 @@ function openRoomingModal() {
   openModal(`
    <div class="flex justify-between items-center mb-4">
     <h3 class="text-lg font-bold">Optimized Rooming List</h3>
-    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <button onclick="closeModal()" class="no-print text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
    </div>
    <p class="text-xs text-slate-500 mb-4">Generated for <strong>${esc(ev.name)}</strong> based on assigned staff, night overlap harmony, and mutual roommate preferences (max 2 per room).</p>
-   <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">${roomsHtml}</div>
-   <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 mt-4">
+   <div class="print-scroll space-y-3 max-h-[60vh] overflow-y-auto pr-1">${roomsHtml}</div>
+   <div class="no-print flex justify-end gap-2 pt-4 border-t border-slate-200 mt-4">
     <button type="button" onclick="window.print()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white hover:bg-slate-900"><i class="fa-solid fa-print mr-1.5"></i>Print List</button>
     <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white">Close</button>
    </div>
@@ -706,14 +724,14 @@ function rAdmin() {
     </td><td class="p-3 text-slate-600">${esc(r.email)}</td>
     <td class="p-3 text-slate-600">${esc(r.gender || '—')}</td>
     <td class="p-3 font-bold text-blue-600">${esc(r.role)}</td><td class="p-3 text-slate-600">${esc(r.region || '—')}</td><td class="p-3">${r.active ? 'Active' : '<span class="text-red-600 font-semibold">Inactive</span>'}</td>
-    <td class="p-3 text-right"><button onclick="userModal('${r.id}')" class="px-2 py-1 text-slate-600 hover:text-blue-600"><i class="fa-solid fa-pen"></i></button></td></tr>`;
+    <td class="p-3 text-right"><button data-user="${esc(r.id)}" onclick="userModal(this.dataset.user)" class="px-2 py-1 text-slate-600 hover:text-blue-600"><i class="fa-solid fa-pen"></i></button></td></tr>`;
    }).join('')}</tbody></table></div>`)}
   ${card(`<div class="flex justify-between items-center mb-4"><h2 class="text-lg font-bold text-slate-900">Tournaments</h2>
    <button onclick="evModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold"><i class="fa-solid fa-plus mr-1"></i>Add tournament</button></div>
    <div class="divide-y divide-slate-100">${S.events.map(ev => `<div class="py-3 flex justify-between items-center gap-3 text-xs"><div><div class="font-semibold text-slate-800 text-sm">${esc(ev.name)}</div>
     <div class="text-slate-500">${esc(ev.date_range)} • ${esc(ev.location)} • ${ev.days.length} day(s)</div></div>
-    <div class="whitespace-nowrap"><button onclick="evModal('${ev.id}')" class="px-2 py-1 text-slate-600 hover:text-blue-600"><i class="fa-solid fa-pen"></i></button>
-    <button onclick="delEv('${ev.id}')" class="px-2 py-1 text-slate-600 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></div></div>`).join('')}</div>`)}</div>`;
+    <div class="whitespace-nowrap"><button data-ev="${esc(ev.id)}" onclick="evModal(this.dataset.ev)" class="px-2 py-1 text-slate-600 hover:text-blue-600"><i class="fa-solid fa-pen"></i></button>
+    <button data-ev="${esc(ev.id)}" onclick="delEv(this.dataset.ev)" class="px-2 py-1 text-slate-600 hover:text-red-600"><i class="fa-solid fa-trash"></i></button></div></div>`).join('')}</div>`)}</div>`;
 }
 async function delEv(id) {
   const ev = S.events.find(x => x.id === id);
@@ -730,7 +748,7 @@ const btns = `<div class="flex justify-end gap-2 pt-2"><button type="button" onc
 function userModal(id) {
   const u = S.users.find(x => x.id === id);
   const sel = (n, arr) => `<label class="block text-[11px] font-bold text-slate-600">${n.toUpperCase()}<select name="${n}" class="mt-1 w-full p-2 rounded-lg border border-slate-300 text-xs font-semibold">${opts(arr, u[n])}</select></label>`;
-  openModal(`<h3 class="text-lg font-bold mb-4">Edit ${esc(u.name)}</h3><form onsubmit="saveUser(event,'${id}')" class="space-y-3">
+  openModal(`<h3 class="text-lg font-bold mb-4">Edit ${esc(u.name)}</h3><form data-id="${esc(id)}" onsubmit="saveUser(event, this.dataset.id)" class="space-y-3">
    ${fld('name', 'Full name', u.name)}${fld('email', 'Email address', u.email, 'readonly')}${fld('phone', 'Phone', u.phone)}${fld('region', 'Home region', u.region)}
    <label class="block text-xs font-semibold text-slate-700">Gender<select name="gender" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-normal"><option value="">Select Gender...</option><option value="Male" ${u.gender === 'Male' ? 'selected' : ''}>Male</option><option value="Female" ${u.gender === 'Female' ? 'selected' : ''}>Female</option></select></label>
    <label class="block text-xs font-semibold text-slate-700">Meal restrictions<input name="meal_restrictions" value="${esc(u.meal_restrictions || '')}" class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-normal"></label>
@@ -747,7 +765,7 @@ async function saveUser(e, id) {
 }
 function evModal(id) {
   const ev = id ? S.events.find(x => x.id === id) : { days: [] };
-  openModal(`<h3 class="text-lg font-bold mb-4">${id ? 'Edit' : 'Add'} tournament</h3><form onsubmit="saveEv(event,'${id || ''}')" class="space-y-3">
+  openModal(`<h3 class="text-lg font-bold mb-4">${id ? 'Edit' : 'Add'} tournament</h3><form data-id="${esc(id || '')}" onsubmit="saveEv(event, this.dataset.id)" class="space-y-3">
    ${fld('name', 'Tournament name', ev.name)}${fld('date_range', 'Dates (display text)', ev.date_range)}${fld('location', 'Location', ev.location)}
    <label class="block text-xs font-semibold text-slate-700">Days, one per line<textarea name="days" rows="4" required class="mt-1 w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-normal">${esc(ev.days.join('\n'))}</textarea></label>${btns}</form>`);
 }
