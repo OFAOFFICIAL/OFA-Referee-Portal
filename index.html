@@ -3,29 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0f2747">
+<meta name="theme-color" content="#FAF9F7">
 <title>OFA Referee Availability & Scheduling Portal</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-  tailwind.config = { theme: { extend: {
-    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
-    colors: { ofa: { navy: '#0f2747', ink: '#0a1b33', red: '#c8102e', 'red-dark': '#a50d26' } }
-  } } };
+  /* Design tokens. These replace Tailwind's defaults, so only these colours, sizes and steps exist.
+     Type: 12/14/16/20/24/32px. Spacing: 4px steps (1=4, 2=8, 3=12, 4=16, 6=24, 8=32, 12=48, 16=64). */
+  tailwind.config = { theme: {
+    colors: {
+      transparent: 'transparent', current: 'currentColor',
+      page: '#FAF9F7', surface: '#FFFFFF', hairline: '#E8E6E1',
+      ink: { DEFAULT: '#1A1A1A', 2: '#5F5E5A', 3: '#74736E' },
+      success: { DEFAULT: '#2E6B47', soft: '#EAF3ED' },
+      danger: { DEFAULT: '#A8281F', soft: '#FBECEA' },
+      warning: { DEFAULT: '#7A5200', soft: '#FBF1DC' },
+    },
+    fontSize: {
+      xs: ['12px', '16px'], sm: ['14px', '20px'], base: ['16px', '24px'],
+      lg: ['20px', '28px'], xl: ['24px', '32px'], '2xl': ['32px', { lineHeight: '40px', letterSpacing: '-0.02em' }],
+    },
+    spacing: { 0: '0', px: '1px', 1: '4px', 2: '8px', 3: '12px', 4: '16px', 6: '24px', 8: '32px', 12: '48px', 16: '64px' },
+    borderRadius: { none: '0', inner: '12px', card: '16px', full: '9999px' },
+    boxShadow: { none: 'none', card: '0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.04)', pop: '0 8px 32px rgba(0,0,0,.12)' },
+    extend: {
+      fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], display: ['Newsreader', 'Georgia', 'serif'] },
+      maxWidth: { content: '960px', form: '440px', prose: '65ch' },
+      borderColor: { DEFAULT: '#E8E6E1' },
+    },
+  } };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,600&display=swap" rel="stylesheet">
 <style>
   /* Only what Tailwind utilities can't express: a site-wide focus ring, motion preference, and print rules. */
-  :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
-
-  /* Thick green border highlight for assigned & locked events */
-  .event-card.assigned-locked,
-  .event-card[data-assigned="true"] {
-    border: 3px solid #15803d !important;
-    box-shadow: 0 4px 12px rgba(21, 128, 61, 0.18) !important;
-    background-color: #f6fdf8 !important;
-  }
+  :focus-visible { outline: 2px solid #1A1A1A; outline-offset: 2px; }
 
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
@@ -34,91 +45,89 @@
     body > *:not(#modal) { display: none !important; }
     body { background: #fff !important; }
     #modal { position: static !important; display: block !important; background: none !important; padding: 0 !important; overflow: visible !important; }
-    #modal > div { box-shadow: none !important; max-width: none !important; margin: 0 !important; }
+    #modal > div { box-shadow: none !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
     #modal .print-scroll { max-height: none !important; overflow: visible !important; }
     #modal .no-print { display: none !important; }
   }
 </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans antialiased">
+<body class="bg-page text-ink min-h-screen flex flex-col font-sans antialiased">
 
-<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ofa-navy focus:shadow-lg">Skip to main content</a>
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[70] focus:rounded-full focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ink focus:shadow-pop">Skip to main content</a>
 
-<header class="bg-ofa-navy text-white">
- <div class="h-1 bg-ofa-red" aria-hidden="true"></div>
- <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-  <div class="flex items-center gap-3 min-w-0">
-   <div class="shrink-0 grid place-items-center w-11 h-11 rounded-xl bg-ofa-red text-white text-sm font-extrabold tracking-tight shadow-sm" aria-hidden="true">OFA</div>
-   <div class="min-w-0">
-    <h1 class="text-base sm:text-lg font-bold leading-tight tracking-tight">OFA Referee Portal</h1>
-    <p class="text-xs text-slate-300 truncate">Ontario Fencing Association · Scheduling &amp; availability</p>
-   </div>
-  </div>
-  <div class="flex items-center gap-2 sm:gap-3">
-   <div id="cloud" class="text-xs font-medium flex items-center rounded-full bg-white/10 px-2.5 py-1"></div>
-   <div id="badge" class="hidden items-center gap-2 rounded-xl bg-white/10 pl-3 pr-1 py-1">
-    <div class="text-right hidden sm:block"><div id="hName" class="text-xs font-semibold text-white"></div><div id="hRole" class="text-[11px] font-semibold uppercase tracking-wider text-slate-300"></div></div>
-    <button type="button" onclick="logout()" aria-label="Sign out" title="Sign out" class="grid place-items-center w-9 h-9 rounded-lg text-slate-100 hover:bg-white/15"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></button>
-   </div>
+<header class="bg-surface border-b border-hairline">
+ <div class="max-w-content mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-x-8">
+  <p class="order-1 h-16 flex items-center text-base font-semibold tracking-tight text-ink">OFA Referees</p>
+  <nav id="nav" aria-label="Portal sections" class="hidden order-3 md:order-2 w-[calc(100%+32px)] md:w-auto md:flex-1 min-w-0 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 -mb-px">
+   <div id="tabs" class="flex gap-6 min-w-max"></div>
+  </nav>
+  <div id="badge" class="order-2 md:order-3 hidden items-center gap-4 h-16">
+   <span id="hName" class="hidden sm:inline text-sm text-ink-2"></span>
+   <button type="button" onclick="logout()" class="text-sm font-medium text-ink underline decoration-hairline underline-offset-4 hover:decoration-ink">Sign out</button>
   </div>
  </div>
 </header>
 
-<main id="main" tabindex="-1" class="flex-grow max-w-6xl w-full mx-auto px-4 py-5 sm:py-8 focus:outline-none">
- <section id="login" class="max-w-md mx-auto sm:mt-6" aria-labelledby="authTitle">
-  <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200 overflow-hidden">
-   <div class="px-6 pt-6 pb-5 border-b border-slate-100">
-    <h2 id="authTitle" class="text-xl font-bold text-slate-900">Portal sign in</h2>
-    <p class="text-sm text-slate-600 mt-1">Access your schedule and tournament availability.</p>
-   </div>
-   <form id="authForm" onsubmit="doAuth(event)" class="p-6 space-y-4">
-    <div id="authMsg" class="hidden" aria-live="polite"></div>
-    <div id="setupWarn" class="hidden rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Add your Supabase URL and anon key to <span class="font-mono">CFG</span> in this file.</div>
+<main id="main" tabindex="-1" class="flex-grow max-w-content w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 focus:outline-none">
+ <div id="loadErr" class="hidden mb-8" role="alert"></div>
 
-    <div id="signupFields" class="hidden space-y-4">
-     <div><label for="aName" class="block text-sm font-medium text-slate-800 mb-1">Full name <span class="text-red-700" aria-hidden="true">*</span></label>
-      <input id="aName" autocomplete="name" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 aria-[invalid=true]:border-red-600"></div>
-     <div><label for="aGender" class="block text-sm font-medium text-slate-800 mb-1">Gender <span class="text-red-700" aria-hidden="true">*</span></label>
-      <select id="aGender" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 aria-[invalid=true]:border-red-600">
-       <option value="">Select gender…</option>
-       <option value="Male">Male</option>
-       <option value="Female">Female</option>
-      </select></div>
-     <div><label for="aPhone" class="block text-sm font-medium text-slate-800 mb-1">Phone number <span class="text-red-700" aria-hidden="true">*</span></label>
-      <input id="aPhone" type="tel" autocomplete="tel" placeholder="(123) 456-7890" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 aria-[invalid=true]:border-red-600"></div>
-     <div><label for="aRegion" class="block text-sm font-medium text-slate-800 mb-1">Home region <span class="text-red-700" aria-hidden="true">*</span></label>
-      <input id="aRegion" placeholder="e.g. Central, East, West, North" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 aria-[invalid=true]:border-red-600"></div>
+ <section id="login" class="max-w-form mx-auto sm:pt-8" aria-labelledby="authTitle">
+  <h1 id="authTitle" class="font-display text-2xl font-semibold text-ink">Sign in</h1>
+  <p id="authSub" class="mt-2 text-base text-ink-2">Check your schedule and tell assignors when you can referee.</p>
+  <form id="authForm" onsubmit="doAuth(event)" class="mt-8" novalidate>
+   <div id="authMsg" data-surface class="hidden mb-6" aria-live="polite"></div>
+   <div id="setupWarn" class="hidden mb-6"></div>
+
+   <div id="signupFields" class="grid grid-rows-[0fr] opacity-0 transition-all duration-300 ease-out">
+    <div id="signupInner" class="overflow-hidden -m-1 p-1" inert>
+     <div class="space-y-6 pb-6">
+      <div><label for="aName" class="block text-sm font-medium text-ink mb-2">Full name</label>
+       <input id="aName" autocomplete="name" aria-required="true" class="block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger">
+       <p id="aName-err" class="hidden mt-2 text-sm text-danger"></p></div>
+      <div><label for="aGender" class="block text-sm font-medium text-ink mb-2">Gender</label>
+       <select id="aGender" aria-required="true" class="block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger">
+        <option value="">Select gender…</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+       </select>
+       <p id="aGender-err" class="hidden mt-2 text-sm text-danger"></p></div>
+      <div><label for="aPhone" class="block text-sm font-medium text-ink mb-2">Phone number</label>
+       <input id="aPhone" type="tel" autocomplete="tel" aria-required="true" placeholder="(123) 456-7890" class="block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink placeholder:text-ink-3 border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger">
+       <p id="aPhone-err" class="hidden mt-2 text-sm text-danger"></p></div>
+      <div><label for="aRegion" class="block text-sm font-medium text-ink mb-2">Home region</label>
+       <input id="aRegion" aria-required="true" aria-describedby="aRegion-hint" class="block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger">
+       <p id="aRegion-hint" class="mt-2 text-sm text-ink-3">For example Central, East, West or North.</p>
+       <p id="aRegion-err" class="hidden mt-2 text-sm text-danger"></p></div>
+     </div>
     </div>
+   </div>
 
-    <div><label for="aEmail" class="block text-sm font-medium text-slate-800 mb-1">Email address <span class="text-red-700" aria-hidden="true">*</span></label>
-     <input type="email" id="aEmail" required autocomplete="email" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 aria-[invalid=true]:border-red-600"></div>
-    <div><label for="aPass" class="block text-sm font-medium text-slate-800 mb-1">Password <span class="text-red-700" aria-hidden="true">*</span></label>
-     <input type="password" id="aPass" required autocomplete="current-password" aria-describedby="passHint" class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 aria-[invalid=true]:border-red-600">
-     <p id="passHint" class="hidden mt-1 text-xs text-slate-600">At least 10 characters.</p></div>
-    <button id="authBtn" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-ofa-navy px-4 py-3 text-sm font-semibold text-white hover:bg-ofa-ink disabled:opacity-60 disabled:cursor-wait">Sign in</button>
-    <div class="flex flex-wrap justify-between gap-2 text-sm">
-     <button type="button" onclick="toggleMode()" id="modeLink" class="font-medium text-blue-700 hover:underline">Create an account</button>
-     <button type="button" onclick="forgot()" class="font-medium text-blue-700 hover:underline">Forgot password?</button></div>
-   </form>
-  </div>
+   <div class="space-y-6">
+    <div><label for="aEmail" class="block text-sm font-medium text-ink mb-2">Email address</label>
+     <input type="email" id="aEmail" autocomplete="email" aria-required="true" class="block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger">
+     <p id="aEmail-err" class="hidden mt-2 text-sm text-danger"></p></div>
+    <div><label for="aPass" class="block text-sm font-medium text-ink mb-2">Password</label>
+     <input type="password" id="aPass" autocomplete="current-password" aria-required="true" class="block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger">
+     <p id="passHint" class="hidden mt-2 text-sm text-ink-3">At least 10 characters.</p>
+     <p id="aPass-err" class="hidden mt-2 text-sm text-danger"></p></div>
+    <button id="authBtn" class="w-full inline-flex items-center justify-center h-12 px-6 rounded-full bg-ink text-surface text-sm font-medium hover:bg-ink/90 disabled:opacity-50 disabled:cursor-wait">Sign in</button>
+   </div>
+   <div class="mt-6 flex flex-wrap justify-between gap-4 text-sm">
+    <button type="button" onclick="toggleMode()" id="modeLink" class="font-medium text-ink underline decoration-hairline underline-offset-4 hover:decoration-ink">Create an account</button>
+    <button type="button" onclick="forgot()" class="font-medium text-ink underline decoration-hairline underline-offset-4 hover:decoration-ink">Forgot password?</button></div>
+  </form>
  </section>
 
  <div id="dash" class="hidden">
-  <div class="flex items-end justify-between gap-4 border-b border-slate-300 mb-5 sm:mb-6">
-   <nav aria-label="Portal sections" class="min-w-0 flex-1 -mx-4 px-4 overflow-x-auto md:mx-0 md:px-0">
-    <div id="tabs" class="flex gap-1 min-w-max"></div>
-   </nav>
-   <p id="greet" class="hidden lg:block pb-3 text-sm text-slate-600 whitespace-nowrap"></p>
-  </div>
   <section id="v-availability"></section><section id="v-profile" class="hidden"></section>
   <section id="v-directory" class="hidden"></section>
   <section id="v-assignor" class="hidden"></section><section id="v-admin" class="hidden"></section>
  </div>
 </main>
 
-<footer class="mt-auto bg-ofa-ink text-slate-300 py-6 text-center text-xs">© 2026 Ontario Fencing Association (OFA)</footer>
-<div id="toasts" class="fixed z-[60] bottom-4 inset-x-4 sm:left-auto sm:right-4 sm:w-96 flex flex-col gap-2 pointer-events-none" aria-live="polite"></div>
-<div id="modal" class="hidden fixed inset-0 bg-slate-900/60 z-50 items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto"></div>
+<footer class="mt-auto py-8 text-center text-xs text-ink-3">© 2026 Ontario Fencing Association (OFA)</footer>
+<div id="toasts" class="fixed z-[60] bottom-6 inset-x-4 flex flex-col items-center gap-2 pointer-events-none" aria-live="polite"></div>
+<div id="modal" class="hidden fixed inset-0 bg-ink/40 z-50 items-start sm:items-center justify-center p-4 overflow-y-auto"></div>
 
 <script>
 /* Supabase > Project Settings > API. The anon key is meant to be public; row-level security protects the data. */
@@ -142,67 +151,106 @@ function isCompletelyUnrated(u) {
   return u.foil === 'Unrated' && u.epee === 'Unrated' && u.sabre === 'Unrated' && u.para === 'Unrated';
 }
 
-/* ===== UI building blocks ===== */
-const CLS = {
-  input: 'block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 aria-[invalid=true]:border-red-600',
-  ro: 'block w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-700',
-  label: 'block text-sm font-medium text-slate-800 mb-1',
-  primary: 'inline-flex items-center justify-center gap-2 rounded-lg bg-ofa-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-ofa-ink disabled:opacity-50 disabled:cursor-not-allowed',
-  secondary: 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed',
-  danger: 'inline-flex items-center justify-center gap-2 rounded-lg bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800',
-  icon: 'inline-flex items-center justify-center gap-2 min-w-[2.5rem] h-10 px-2.5 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+/* ===== Design system ===== */
+const C = {
+  input: 'block w-full h-12 rounded-inner bg-surface px-4 text-base text-ink placeholder:text-ink-3 border border-ink-3 hover:border-ink aria-[invalid=true]:border-2 aria-[invalid=true]:border-danger',
+  ro: 'block w-full h-12 rounded-inner bg-page px-4 text-base text-ink-2 border border-hairline',
+  label: 'block text-sm font-medium text-ink mb-2',
+  hint: 'mt-2 text-sm text-ink-3',
+  err: 'mt-2 text-sm text-danger',
+  primary: 'inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-ink text-surface text-sm font-medium whitespace-nowrap hover:bg-ink/90 disabled:opacity-50 disabled:cursor-not-allowed',
+  secondary: 'inline-flex items-center justify-center gap-2 h-[40px] px-4 rounded-full bg-surface text-ink text-sm font-medium whitespace-nowrap border border-hairline hover:border-ink-3 disabled:opacity-50 disabled:cursor-not-allowed',
+  danger: 'inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-danger text-surface text-sm font-medium whitespace-nowrap hover:bg-danger/90',
+  link: 'text-sm font-medium text-ink underline decoration-hairline underline-offset-4 hover:decoration-ink disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed',
+  iconBtn: 'grid place-items-center shrink-0 w-[40px] h-[40px] rounded-full text-ink-2 hover:text-ink hover:bg-page',
 };
-const REQ = '<span class="text-red-700" aria-hidden="true">*</span>';
-const panel = inner => `<div class="bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-4 sm:p-6">${inner}</div>`;
-/* On phones the table panels drop their frame so each row can become its own card. */
-const tablePanel = inner => `<div class="md:bg-white md:rounded-2xl md:ring-1 md:ring-slate-200 md:shadow-sm md:p-6">${inner}</div>`;
-const viewHead = (title, desc, actions = '') => `<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4 sm:mb-6">
-  <div><h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">${title}</h2>${desc ? `<p class="mt-1 text-sm text-slate-600 max-w-2xl">${desc}</p>` : ''}</div>${actions}</div>`;
+const viewHead = (title, desc, actions = '') => `<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 sm:mb-12">
+  <div><h1 class="font-display text-2xl font-semibold text-ink">${title}</h1>${desc ? `<p class="mt-2 text-base text-ink-2 max-w-prose">${desc}</p>` : ''}</div>${actions}</div>`;
+const sectionHead = (title, desc = '', actions = '') => `<div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+  <div><h2 class="text-lg font-semibold text-ink">${title}</h2>${desc ? `<p class="mt-1 text-sm text-ink-2 max-w-prose">${desc}</p>` : ''}</div>${actions}</div>`;
+
+/* Status colour only ever appears as a small dot, always next to a word. */
+const TONE = { success: 'bg-success', danger: 'bg-danger', warning: 'bg-warning', none: 'border border-ink-3' };
+const dot = tone => `<span class="inline-block shrink-0 w-2 h-2 rounded-full ${TONE[tone]}" aria-hidden="true"></span>`;
+const STATUS = { available: ['success', 'Available'], partial: ['warning', 'Partly available'], unavailable: ['danger', 'Unavailable'], unanswered: ['none', 'Not answered'] };
+const statusLabel = s => `<span class="inline-flex items-center gap-2 text-sm text-ink-2 whitespace-nowrap">${dot(STATUS[s][0])}${STATUS[s][1]}</span>`;
+const KIND = { error: 'danger', success: 'success', info: 'none', warn: 'warning' };
+/* A calm note: a dot, an optional short title, and a sentence. */
+const note = (tone, title, body, extra = '') => `<div class="flex gap-3 rounded-inner bg-page p-4 ${extra}">
+  <span class="mt-[6px]">${dot(tone)}</span><p class="text-sm text-ink-2 max-w-prose">${title ? `<span class="font-medium text-ink">${title}</span> ` : ''}${body}</p></div>`;
+const card = (inner, extra = '') => `<div class="bg-surface rounded-card shadow-card p-6 sm:p-8 ${extra}">${inner}</div>`;
+const emptyState = (line, action = '') => card(`<p class="text-base text-ink-2">${line}</p>${action ? `<div class="mt-6">${action}</div>` : ''}`, 'text-center');
+/* Small inline icons, used only where they carry meaning. */
+const ICON = {
+  lock: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M2.5 6.5l2.25 2.25L9.5 3.75"/></svg>',
+  x: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+};
+
+/* Form fields: label above, hint and error below. Fields are required unless marked optional. */
+function field({ id, label, value = '', type = 'text', hint = '', optional = false, readonly = false, name = '', attrs = '' }) {
+  return `<div><label for="${id}" class="${C.label}">${label}${optional ? ' <span class="font-normal text-ink-3">(optional)</span>' : ''}</label>
+   <input id="${id}" ${name ? `name="${name}"` : ''} type="${type}" value="${esc(value)}" ${readonly ? 'readonly' : optional ? '' : 'aria-required="true"'} ${hint ? `aria-describedby="${id}-hint"` : ''} ${attrs} class="${readonly ? C.ro : C.input}">
+   ${hint ? `<p id="${id}-hint" class="${C.hint}">${hint}</p>` : ''}<p id="${id}-err" class="hidden ${C.err}"></p></div>`;
+}
+function selectField({ id, label, options, name = '', hint = '', attrs = '' }) {
+  return `<div><label for="${id}" class="${C.label}">${label}</label>
+   <select id="${id}" ${name ? `name="${name}"` : ''} ${hint ? `aria-describedby="${id}-hint"` : ''} ${attrs} class="${C.input}">${options}</select>
+   ${hint ? `<p id="${id}-hint" class="${C.hint}">${hint}</p>` : ''}<p id="${id}-err" class="hidden ${C.err}"></p></div>`;
+}
+const opts = (arr, v) => arr.map(x => `<option ${x === v ? 'selected' : ''}>${x}</option>`).join('');
+const genderOpts = g => `<option value="">Select gender…</option><option value="Male" ${g === 'Male' ? 'selected' : ''}>Male</option><option value="Female" ${g === 'Female' ? 'selected' : ''}>Female</option>`;
 
 /* Tables that turn into stacked cards below the md breakpoint. Cells carry data-label for their mobile caption. */
 const TB = {
+  wrap: 'md:bg-surface md:rounded-card md:shadow-card md:px-6 md:py-2',
   table: 'w-full text-left text-sm max-md:block',
   thead: 'max-md:hidden',
-  th: 'bg-slate-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200',
-  tbody: 'max-md:block max-md:space-y-3 md:divide-y md:divide-slate-100',
-  tr: 'max-md:grid max-md:gap-x-4 max-md:gap-y-3 max-md:rounded-xl max-md:bg-white max-md:p-4 max-md:shadow-sm max-md:ring-1 max-md:ring-slate-200 md:hover:bg-slate-50',
-  td: 'md:px-3 md:py-3 align-top min-w-0',
-  lbl: 'max-md:before:block max-md:before:content-[attr(data-label)] max-md:before:mb-0.5 max-md:before:text-[11px] max-md:before:font-semibold max-md:before:uppercase max-md:before:tracking-wide max-md:before:text-slate-600',
+  th: 'py-4 pr-4 last:pr-0 text-sm font-normal text-ink-2 border-b border-hairline align-bottom',
+  tbody: 'max-md:block max-md:space-y-3 md:divide-y md:divide-hairline',
+  tr: 'max-md:grid max-md:gap-x-4 max-md:gap-y-4 max-md:rounded-card max-md:bg-surface max-md:p-6 max-md:shadow-card',
+  td: 'md:py-4 md:pr-4 md:last:pr-0 align-top min-w-0',
+  lbl: 'max-md:before:block max-md:before:content-[attr(data-label)] max-md:before:mb-1 max-md:before:text-xs max-md:before:text-ink-3',
 };
 
-const MSG = {
-  error: ['border-red-200 bg-red-50 text-red-800', 'fa-circle-exclamation'],
-  success: ['border-emerald-200 bg-emerald-50 text-emerald-900', 'fa-circle-check'],
-  info: ['border-sky-200 bg-sky-50 text-sky-900', 'fa-circle-info'],
-  warn: ['border-amber-200 bg-amber-50 text-amber-900', 'fa-triangle-exclamation'],
-};
-const msgBox = (kind, html, extra = '') => `<div class="flex gap-2.5 rounded-lg border p-3 text-sm ${MSG[kind][0]} ${extra}"><i class="fa-solid ${MSG[kind][1]} mt-0.5" aria-hidden="true"></i><div>${html}</div></div>`;
-
-/* Inline message in a container (by id); with no container it falls back to a toast. Pass no text to clear. */
+/* Inline message in a container (by id); with no container it falls back to a toast. Pass no text to clear.
+   Containers marked data-compact show a single dot + line; data-surface ones sit on the page background. */
 function say(where, kind, text) {
   const el = typeof where === 'string' ? $(where) : where;
   if (!el) return text && toast(text, kind);
   if (!text) { el.innerHTML = ''; el.classList.add('hidden'); return; }
-  el.innerHTML = msgBox(kind, esc(text)); el.classList.remove('hidden');
+  el.innerHTML = 'compact' in el.dataset
+    ? `<p class="inline-flex items-center gap-2 text-sm ${kind === 'error' ? 'text-danger' : 'text-ink-2'}">${dot(KIND[kind])}${esc(text)}</p>`
+    : note(KIND[kind], '', `<span class="text-ink">${esc(text)}</span>`, 'surface' in el.dataset ? '!bg-surface shadow-card' : '');
+  el.classList.remove('hidden');
 }
 function toast(text, kind = 'success') {
   const t = document.createElement('div');
   t.setAttribute('role', kind === 'error' ? 'alert' : 'status');
-  t.className = `pointer-events-auto flex items-start gap-3 rounded-xl border bg-white p-3 pl-4 text-sm text-slate-900 shadow-lg ${kind === 'error' ? 'border-red-300' : 'border-slate-200'}`;
-  const color = { error: 'text-red-700', success: 'text-emerald-700', info: 'text-sky-700', warn: 'text-amber-700' }[kind];
-  t.innerHTML = `<i class="fa-solid ${MSG[kind][1]} ${color} mt-0.5" aria-hidden="true"></i><p class="flex-1">${esc(text)}</p>
-    <button type="button" aria-label="Dismiss" class="-m-1 grid place-items-center w-8 h-8 rounded-md text-slate-600 hover:bg-slate-100"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`;
+  t.className = 'pointer-events-auto flex items-center gap-3 max-w-form rounded-full bg-surface shadow-pop py-2 pl-4 pr-2 text-sm text-ink';
+  t.innerHTML = `${dot(KIND[kind])}<p class="flex-1">${esc(text)}</p>
+    <button type="button" aria-label="Dismiss" class="grid place-items-center w-8 h-8 rounded-full text-ink-2 hover:text-ink">${ICON.x}</button>`;
   t.querySelector('button').onclick = () => t.remove();
   $('toasts').appendChild(t);
   setTimeout(() => t.remove(), kind === 'error' ? 8000 : 4000);
 }
-/* Flag a field as invalid, explain why in the given message area, and move focus to it. */
+/* Show an error under a field (or in the given message area), mark it invalid and move focus to it. */
 function fieldErr(id, where, text) {
-  const f = $(id); say(where, 'error', text);
-  if (f) { f.setAttribute('aria-invalid', 'true'); f.setAttribute('aria-describedby', where); f.focus(); }
+  const f = $(id), err = $(id + '-err');
+  if (err) { err.textContent = text; err.classList.remove('hidden'); } else say(where, 'error', text);
+  if (f) {
+    const ids = (f.getAttribute('aria-describedby') || '').split(' ').filter(Boolean), tgt = err ? err.id : where;
+    if (!ids.includes(tgt)) ids.push(tgt);
+    f.setAttribute('aria-invalid', 'true'); f.setAttribute('aria-describedby', ids.join(' ')); f.focus();
+  }
 }
-document.addEventListener('input', e => e.target.removeAttribute?.('aria-invalid'));
-document.addEventListener('change', e => e.target.removeAttribute?.('aria-invalid'));
+function clearErrs(scope) {
+  scope?.querySelectorAll('[id$="-err"]').forEach(e => { e.textContent = ''; e.classList.add('hidden'); });
+  scope?.querySelectorAll('[aria-invalid]').forEach(e => e.removeAttribute('aria-invalid'));
+}
+const clearOne = e => { if (e.target.id && e.target.removeAttribute) { e.target.removeAttribute('aria-invalid'); const er = $(e.target.id + '-err'); if (er) { er.textContent = ''; er.classList.add('hidden'); } } };
+document.addEventListener('input', clearOne);
+document.addEventListener('change', clearOne);
 
 /* Disable a button while its request is in flight. */
 async function busy(btn, fn) {
@@ -218,27 +266,32 @@ function withFocus(fn) {
   if (key && !document.contains(a) && !moved) document.querySelector(`[data-key="${CSS.escape(key)}"]`)?.focus();
 }
 
-function setCloud(ok, t) {
-  $('cloud').className = `text-xs font-medium flex items-center rounded-full bg-white/10 px-2.5 py-1 ${ok ? 'text-emerald-200' : 'text-amber-200'}`;
-  $('cloud').innerHTML = `<span class="inline-block w-2 h-2 rounded-full ${ok ? 'bg-emerald-400' : 'bg-amber-400'} sm:mr-1.5" aria-hidden="true"></span><span class="sr-only sm:not-sr-only">${esc(t)}</span>`;
-  $('cloud').title = t;
+/* Connection status: say nothing while things work; show one quiet message when loading fails. */
+function setCloud(ok) {
+  $('loadErr').classList.toggle('hidden', ok);
+  $('loadErr').innerHTML = ok ? '' : note('danger', 'We couldn’t load the latest data.', `Check your connection, then <button type="button" onclick="refresh()" class="${C.link}">try again</button>.`, '!bg-surface shadow-card');
 }
 const fail = (r, where) => { if (r?.error) { say(where, 'error', r.error.message); return true; } return false; };
 
 /* ===== Auth ===== */
 function toggleMode() {
   signup = !signup;
-  $('signupFields').classList.toggle('hidden', !signup);
-  $('authTitle').textContent = signup ? 'Create account' : 'Portal sign in';
+  const f = $('signupFields');
+  f.classList.toggle('grid-rows-[1fr]', signup); f.classList.toggle('grid-rows-[0fr]', !signup); f.classList.toggle('opacity-0', !signup);
+  $('signupInner').inert = !signup;
+  $('authTitle').textContent = signup ? 'Create an account' : 'Sign in';
+  $('authSub').textContent = signup ? 'Referees create their own account. An OFA admin sets your ratings afterwards.' : 'Check your schedule and tell assignors when you can referee.';
   $('authBtn').textContent = signup ? 'Create account' : 'Sign in';
   $('modeLink').textContent = signup ? 'I already have an account' : 'Create an account';
   $('aPass').autocomplete = signup ? 'new-password' : 'current-password';
   $('passHint').classList.toggle('hidden', !signup);
-  say('authMsg');
+  $('aPass').setAttribute('aria-describedby', signup ? 'passHint' : '');
+  say('authMsg'); clearErrs($('authForm'));
+  if (signup) $('aName').focus();
 }
 async function doAuth(e) {
   e.preventDefault(); if (!sb) return;
-  say('authMsg');
+  say('authMsg'); clearErrs($('authForm'));
   const email = $('aEmail').value.trim(), password = $('aPass').value;
   if (signup) {
     const name = $('aName').value.trim();
@@ -250,6 +303,7 @@ async function doAuth(e) {
     if (!gender) return fieldErr('aGender', 'authMsg', 'Please select your gender.');
     if (!phone) return fieldErr('aPhone', 'authMsg', 'Please enter your phone number.');
     if (!region) return fieldErr('aRegion', 'authMsg', 'Please enter your home region.');
+    if (!email) return fieldErr('aEmail', 'authMsg', 'Please enter your email address.');
     if (password.length < 10) return fieldErr('aPass', 'authMsg', 'Use a password with at least 10 characters.');
 
     const r = await busy($('authBtn'), () => sb.auth.signUp({
@@ -267,10 +321,13 @@ async function doAuth(e) {
     if (fail(r, 'authMsg')) return;
     if (!r.data.session) { toggleMode(); say('authMsg', 'success', 'Check your email to confirm your account, then sign in.'); }
   } else {
+    if (!email) return fieldErr('aEmail', 'authMsg', 'Please enter your email address.');
+    if (!password) return fieldErr('aPass', 'authMsg', 'Please enter your password.');
     if (fail(await busy($('authBtn'), () => sb.auth.signInWithPassword({ email, password })), 'authMsg')) return;
   }
 }
 async function forgot() {
+  say('authMsg'); clearErrs($('authForm'));
   const email = $('aEmail').value.trim();
   if (!sb || !email) return fieldErr('aEmail', 'authMsg', 'Enter your email address first.');
   if (!fail(await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href.split('#')[0] }), 'authMsg')) say('authMsg', 'success', 'If that email has an account, a reset link is on its way.');
@@ -278,7 +335,7 @@ async function forgot() {
 async function logout() { await sb.auth.signOut(); }
 function showDash(on) {
   $('login').classList.toggle('hidden', on); $('dash').classList.toggle('hidden', !on);
-  $('badge').classList.toggle('hidden', !on); $('badge').classList.toggle('flex', on);
+  $('badge').classList.toggle('hidden', !on); $('badge').classList.toggle('flex', on); $('nav').classList.toggle('hidden', !on);
   if (!on) { closeModal(); $('aPass').value = ''; S = { uid: null, me: null, users: [], events: [], av: [], asg: [] }; }
 }
 async function enter(session) {
@@ -295,7 +352,7 @@ if (sb) {
     if (ev === 'PASSWORD_RECOVERY') { tab = 'profile'; recovering = true; }
     if (ev === 'SIGNED_OUT') showDash(false); else if (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION' || ev === 'PASSWORD_RECOVERY') setTimeout(() => enter(session), 0);
   });
-} else { $('setupWarn').classList.remove('hidden'); setCloud(false, 'Not configured'); }
+} else { $('setupWarn').classList.remove('hidden'); $('setupWarn').innerHTML = note('warning', 'Not set up yet.', 'Add your Supabase URL and anon key to <span class="font-mono">CFG</span> in this file.', '!bg-surface shadow-card'); }
 
 /* ===== Data ===== */
 async function load() {
@@ -303,9 +360,9 @@ async function load() {
     sb.from('profiles').select('*').order('name'), sb.from('events').select('*').order('created_at'),
     sb.from('availability').select('*'), sb.from('assignments').select('*')]);
   const bad = [p, e, a, g].find(r => r.error);
-  if (bad) { setCloud(false, 'Load failed'); console.error(bad.error); return; }
+  if (bad) { setCloud(false); console.error(bad.error); return; }
   S.users = p.data; S.events = e.data; S.av = a.data; S.asg = g.data;
-  S.me = S.users.find(u => u.id === S.uid); setCloud(true, 'Connected');
+  S.me = S.users.find(u => u.id === S.uid); setCloud(true);
 }
 async function refresh() { await load(); render(); }
 function go(t) { tab = t; refresh(); }
@@ -356,38 +413,36 @@ function status(ev, uid) {
   const v = ev.days.map(d => avOf(uid, ev.id, d)), y = v.filter(x => x === 'yes').length, n = v.filter(x => x === 'no').length, a = v.filter(Boolean).length;
   return !v.length ? 'unanswered' : y === v.length ? 'available' : n === v.length ? 'unavailable' : a ? 'partial' : 'unanswered';
 }
-const BADGE = { available: ['bg-emerald-100 text-emerald-900', 'Available'], unavailable: ['bg-red-100 text-red-900', 'Unavailable'], partial: ['bg-amber-100 text-amber-900', 'Partial'], unanswered: ['bg-slate-200 text-slate-800', 'Not answered'] };
-const pill = s => `<span class="inline-flex items-center whitespace-nowrap text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${BADGE[s][0]}">${BADGE[s][1]}</span>`;
 
 /* ===== Shell ===== */
+/* [key, (unused), long name, roles, tab label] */
 const TABS = [
-  ['availability', 'fa-calendar-days', 'My availability', ['referee', 'assignor', 'admin'], 'Availability'],
-  ['profile', 'fa-user-gear', 'Profile & ratings', ['referee', 'assignor', 'admin'], 'Profile'],
-  ['directory', 'fa-address-book', 'Referee directory', ['referee', 'assignor', 'admin'], 'Directory'],
-  ['assignor', 'fa-clipboard-list', 'Assignor desk', ['assignor', 'admin'], 'Assignor'],
-  ['admin', 'fa-shield-halved', 'Admin', ['admin'], 'Admin']
+  ['availability', '', 'My availability', ['referee', 'assignor', 'admin'], 'Availability'],
+  ['profile', '', 'Profile & ratings', ['referee', 'assignor', 'admin'], 'Profile'],
+  ['directory', '', 'Referee directory', ['referee', 'assignor', 'admin'], 'Directory'],
+  ['assignor', '', 'Assignor desk', ['assignor', 'admin'], 'Assignor desk'],
+  ['admin', '', 'Admin', ['admin'], 'Admin']
 ];
 
 function render() { withFocus(renderNow); }
 function renderNow() {
   const u = S.me; if (!u) return;
   if (!TABS.find(t => t[0] === tab)[3].includes(u.role)) tab = 'availability';
-  $('hName').textContent = u.name; $('hRole').textContent = u.role;
-  $('greet').innerHTML = `Signed in as <span class="font-semibold text-slate-900">${esc(u.name)}</span> (${esc(u.role)})`;
+  $('hName').textContent = u.name;
   $('tabs').innerHTML = TABS.filter(t => t[3].includes(u.role)).map(t => {
     const on = tab === t[0];
     return `<button type="button" data-tab="${t[0]}" data-key="tab:${t[0]}" onclick="go(this.dataset.tab)" ${on ? 'aria-current="page"' : ''}
-      class="inline-flex items-center gap-2 -mb-px border-b-[3px] px-3 sm:px-4 py-3 text-sm font-semibold whitespace-nowrap transition ${on ? 'border-ofa-red text-ofa-navy' : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-400'}">
-      <i class="fa-solid ${t[1]}" aria-hidden="true"></i><span class="sm:hidden">${t[4]}</span><span class="hidden sm:inline">${t[2]}</span></button>`;
+      class="inline-flex items-center h-12 md:h-16 border-b-2 text-sm whitespace-nowrap ${on ? 'border-ink text-ink font-medium' : 'border-transparent text-ink-2 hover:text-ink'}">${t[4]}</button>`;
   }).join('');
   ['availability', 'profile', 'directory', 'assignor', 'admin'].forEach(t => $('v-' + t).classList.toggle('hidden', t !== tab));
   ({ availability: rAvail, profile: rProfile, directory: rDirectory, assignor: rAssignor, admin: rAdmin })[tab]();
 }
 
 /* ===== Availability (per day) ===== */
-/* [selected colours, visible label, tooltip, extra words for screen readers] */
-const DAYBTN = { yes: ['bg-emerald-700 border-emerald-700', '<i class="fa-solid fa-check" aria-hidden="true"></i> Full', 'Full day', ' day'], am: ['bg-sky-700 border-sky-700', 'AM', 'Morning only', ' (morning only)'], pm: ['bg-sky-700 border-sky-700', 'PM', 'Afternoon only', ' (afternoon only)'], no: ['bg-red-700 border-red-700', '<i class="fa-solid fa-xmark" aria-hidden="true"></i> No', 'Unavailable', ' (unavailable)'] };
-const dayBtns = (evId, i, v, disabled) => Object.entries(DAYBTN).map(([k, [on, label, tip, sr]]) => `<button type="button" ${disabled ? 'disabled' : ''} data-ev="${esc(evId)}" data-i="${i}" data-k="${k}" data-key="day:${esc(evId)}:${i}:${k}" onclick="setDay(this.dataset.ev, +this.dataset.i, this.dataset.k)" aria-pressed="${v === k}" title="${tip}" class="inline-flex items-center justify-center gap-1 min-h-[44px] sm:min-h-[36px] sm:min-w-[3.25rem] px-2.5 rounded-lg border text-xs font-semibold ${v === k ? on + ' text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'} disabled:opacity-50 disabled:cursor-not-allowed">${label}<span class="sr-only">${sr}</span></button>`).join('');
+/* Segmented day control. [visible label, tooltip, extra words for screen readers] */
+const DAYBTN = { yes: ['Full', 'Full day', ' day'], am: ['AM', 'Morning only', ' (morning only)'], pm: ['PM', 'Afternoon only', ' (afternoon only)'], no: ['Off', 'Unavailable', ' (unavailable)'] };
+const dayBtns = (evId, i, v, disabled) => Object.entries(DAYBTN).map(([k, [label, tip, sr]]) => `<button type="button" ${disabled ? 'disabled' : ''} data-ev="${esc(evId)}" data-i="${i}" data-k="${k}" data-key="day:${esc(evId)}:${i}:${k}" onclick="setDay(this.dataset.ev, +this.dataset.i, this.dataset.k)" aria-pressed="${v === k}" title="${tip}"
+  class="h-[40px] sm:h-8 sm:min-w-[56px] px-3 rounded-full text-sm transition-colors ${v === k ? 'bg-ink text-surface font-medium' : 'text-ink-2 enabled:hover:text-ink enabled:hover:bg-surface'} disabled:cursor-not-allowed">${label}<span class="sr-only">${sr}</span></button>`).join('');
 
 function rAvail() {
   const u = S.me;
@@ -398,14 +453,14 @@ function rAvail() {
      so an account deactivated mid-session lands here on the next click. */
   let globalBlockBanner = '';
   if (isInactive) {
-    globalBlockBanner = msgBox('error', 'Your account status is currently <strong>Inactive</strong>. You cannot submit availability until an admin activates your account.', 'mb-4');
+    globalBlockBanner = note('danger', 'Your account is inactive.', 'You can’t submit availability until an admin activates your account.', '!bg-surface shadow-card mb-8');
   } else if (completelyUnrated) {
-    globalBlockBanner = msgBox('warn', 'You are currently listed as <strong>Unrated</strong> across all weapons. Referees who are completely unrated cannot submit availability until an admin assigns a rating.', 'mb-4');
+    globalBlockBanner = note('warning', 'You don’t have a rating yet.', 'Referees who are unrated in every weapon can’t submit availability until an admin assigns a rating.', '!bg-surface shadow-card mb-8');
   }
 
-  $('v-availability').innerHTML = `${viewHead('Tournament availability', 'Mark each day as full day, morning only (AM), afternoon only (PM), or unavailable. Select your choice again to clear it.')}
+  $('v-availability').innerHTML = `${viewHead('Your availability', 'Tell assignors which days you can referee. Choose Full, AM, PM or Off for each day; choose it again to clear it.')}
    ${globalBlockBanner}
-   <div class="space-y-4 sm:space-y-5">${S.events.length ? S.events.map(evCard).join('') : panel('<p class="text-sm text-slate-600">No tournaments yet. An admin can add one in the Admin tab.</p>')}</div>`;
+   <div class="space-y-6">${S.events.length ? S.events.map(evCard).join('') : emptyState('There are no tournaments yet. They’ll appear here once an admin adds them.')}</div>`;
 }
 
 function evCard(ev) {
@@ -415,42 +470,52 @@ function evCard(ev) {
   const accomDays = getAccomDays(ev);
   const isAccomNeeded = accomDays.some(d => accomOf(u.id, ev.id, d));
 
-  return `<article data-ev-card="${esc(ev.id)}" aria-labelledby="evt-${n}" class="event-card bg-white rounded-2xl ring-1 ring-slate-200 shadow-sm p-4 sm:p-6 ${assigned ? 'assigned-locked' : ''}" data-assigned="${assigned ? 'true' : 'false'}">
-    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+  return `<article data-ev-card="${esc(ev.id)}" aria-labelledby="evt-${n}" class="bg-surface rounded-card shadow-card p-6 sm:p-8">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-6">
      <div class="min-w-0">
-      <div class="flex flex-wrap items-center gap-1.5">${pill(status(ev, u.id))}
-       ${assigned ? '<span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-blue-100 text-blue-900"><i class="fa-solid fa-lock" aria-hidden="true"></i> Assigned</span>' : ''}</div>
-      <h3 id="evt-${n}" class="mt-2 text-lg font-bold text-slate-900">${esc(ev.name)}</h3>
-      <p class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600"><span><i class="fa-solid fa-calendar mr-1.5" aria-hidden="true"></i>${esc(ev.date_range)}</span><span><i class="fa-solid fa-location-dot mr-1.5" aria-hidden="true"></i>${esc(ev.location)}</span></p>
+      <h2 id="evt-${n}" class="text-lg font-semibold text-ink">${esc(ev.name)}</h2>
+      <p class="mt-1 text-sm text-ink-2">${esc(ev.date_range)}<span aria-hidden="true"> · </span><span class="sr-only">, </span>${esc(ev.location)}</p>
      </div>
-     <div class="grid grid-cols-2 gap-2 md:flex md:shrink-0">
-      <button type="button" ${eventBlocked ? 'disabled' : ''} data-ev="${esc(ev.id)}" data-key="all:${esc(ev.id)}:yes" onclick="setAll(this.dataset.ev, 'yes')" class="${CLS.secondary} !px-3 !py-2 text-xs"><i class="fa-solid fa-check-double text-emerald-700" aria-hidden="true"></i>All days available</button>
-      <button type="button" ${eventBlocked ? 'disabled' : ''} data-ev="${esc(ev.id)}" data-key="all:${esc(ev.id)}:no" onclick="setAll(this.dataset.ev, 'no')" class="${CLS.secondary} !px-3 !py-2 text-xs"><i class="fa-solid fa-ban text-red-700" aria-hidden="true"></i>All days unavailable</button>
-     </div>
+     <div class="sm:pt-1">${assigned ? `<span class="inline-flex items-center gap-2 text-sm text-ink-2 whitespace-nowrap">${dot('success')}Assigned</span>` : statusLabel(status(ev, u.id))}</div>
     </div>
 
-    ${assigned ? msgBox('info', 'You have been assigned to this tournament. Availability and accommodation are now locked.', 'mt-4') : ''}
+    ${assigned ? `<div class="mt-6 flex gap-3 rounded-inner bg-page p-4 text-sm"><span class="mt-[2px] text-ink-2">${ICON.lock}</span>
+      <p class="text-ink-2 max-w-prose"><span class="font-medium text-ink">You’re assigned to this tournament.</span> Availability and accommodation are now locked.</p></div>` : ''}
 
-    <fieldset class="mt-5">
-     <legend class="mb-2 text-sm font-semibold text-slate-800">Daily availability</legend>
-     <div class="grid gap-2 lg:grid-cols-2">${ev.days.map((day, i) => { const v = avOf(u.id, ev.id, day); return `<div class="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-       <span id="dl-${n}-${i}" class="text-sm font-medium text-slate-800">${esc(day)}</span>
-       <div role="group" aria-labelledby="dl-${n}-${i}" class="grid grid-cols-4 gap-1.5 sm:flex">${dayBtns(ev.id, i, v, eventBlocked)}</div></div>`; }).join('')}</div>
-    </fieldset>
+    <div class="mt-8">
+     <div class="flex items-baseline justify-between gap-4">
+      <h3 class="text-sm font-medium text-ink">Days</h3>
+      ${eventBlocked ? '' : `<div class="flex gap-4">
+       <button type="button" data-ev="${esc(ev.id)}" data-key="all:${esc(ev.id)}:yes" onclick="setAll(this.dataset.ev, 'yes')" class="${C.link}">All full</button>
+       <button type="button" data-ev="${esc(ev.id)}" data-key="all:${esc(ev.id)}:no" onclick="setAll(this.dataset.ev, 'no')" class="${C.link}">All off</button></div>`}
+     </div>
+     <ul class="mt-2 divide-y divide-hairline">${ev.days.map((day, i) => `<li class="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+       <span id="dl-${n}-${i}" class="text-base text-ink">${esc(day)}</span>
+       <div role="group" aria-labelledby="dl-${n}-${i}" class="grid grid-cols-4 gap-1 sm:inline-flex rounded-full bg-page p-1 ${eventBlocked ? 'opacity-50' : ''}">${dayBtns(ev.id, i, avOf(u.id, ev.id, day), eventBlocked)}</div></li>`).join('')}</ul>
+    </div>
 
-    <div class="mt-4 rounded-xl border border-slate-200 p-3 sm:p-4">
-     <div class="flex items-center gap-3">
-      <input type="checkbox" id="acc-${n}" aria-controls="accom-box-${n}" ${eventBlocked ? 'disabled' : ''} ${isAccomNeeded ? 'checked' : ''} data-ev="${esc(ev.id)}" data-key="accneed:${esc(ev.id)}" onchange="toggleAccomNeeded(this.dataset.ev, this.checked)" class="h-5 w-5 shrink-0 accent-ofa-navy disabled:cursor-not-allowed">
-      <label for="acc-${n}" class="text-sm font-semibold text-slate-800 ${eventBlocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}"><i class="fa-solid fa-bed text-ofa-navy mr-1" aria-hidden="true"></i> Accommodation required for this tournament</label>
+    <div class="mt-4 pt-6 border-t border-hairline">
+     <div class="flex items-start justify-between gap-6">
+      <div>
+       <label for="acc-${n}" class="text-base font-medium text-ink ${eventBlocked ? '' : 'cursor-pointer'}">Accommodation</label>
+       <p id="acc-${n}-hint" class="mt-1 text-sm text-ink-2">Turn on if you need a hotel room, then choose the nights.</p>
+      </div>
+      <span class="relative inline-flex shrink-0 mt-1 ${eventBlocked ? 'opacity-50' : ''}">
+       <input type="checkbox" role="switch" id="acc-${n}" aria-describedby="acc-${n}-hint" aria-controls="accom-box-${n}" ${eventBlocked ? 'disabled' : ''} ${isAccomNeeded ? 'checked' : ''} data-ev="${esc(ev.id)}" data-key="accneed:${esc(ev.id)}" onchange="toggleAccomNeeded(this.dataset.ev, this.checked)"
+        class="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed">
+       <span class="block h-6 w-[44px] rounded-full bg-ink-3 transition-colors peer-checked:bg-ink peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink" aria-hidden="true"></span>
+       <span class="absolute left-[2px] top-[2px] h-[20px] w-[20px] rounded-full bg-surface shadow-card transition-transform peer-checked:translate-x-[20px]" aria-hidden="true"></span>
+      </span>
      </div>
-     <div id="accom-box-${n}" class="${isAccomNeeded ? '' : 'hidden'} mt-3 pt-3 border-t border-slate-100">
-      <fieldset>
-       <legend class="mb-2 text-sm text-slate-700">Select the nights you need accommodation:</legend>
-       <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${accomDays.map((accDay, idx) => `<div class="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3">
-         <input type="checkbox" id="acc-${n}-${idx}" ${eventBlocked ? 'disabled' : ''} ${accomOf(u.id, ev.id, accDay) ? 'checked' : ''} data-ev="${esc(ev.id)}" data-day="${esc(accDay)}" data-key="acc:${esc(ev.id)}:${idx}" onchange="setAccomDay(this.dataset.ev, this.dataset.day, this.checked)" class="h-4 w-4 shrink-0 accent-ofa-navy disabled:cursor-not-allowed">
-         <label for="acc-${n}-${idx}" class="flex-1 py-2.5 text-sm text-slate-800 ${eventBlocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}">${esc(accDay)}</label></div>`).join('')}</div>
-      </fieldset>
-     </div>
+     <fieldset id="accom-box-${n}" class="${isAccomNeeded ? '' : 'hidden'} mt-4">
+      <legend class="mb-3 text-sm text-ink-2">Nights</legend>
+      <div class="flex flex-wrap gap-2">${accomDays.map((accDay, idx) => {
+        const on = accomOf(u.id, ev.id, accDay);
+        return `<span class="relative">
+         <input type="checkbox" id="acc-${n}-${idx}" ${eventBlocked ? 'disabled' : ''} ${on ? 'checked' : ''} data-ev="${esc(ev.id)}" data-day="${esc(accDay)}" data-key="acc:${esc(ev.id)}:${idx}" onchange="setAccomDay(this.dataset.ev, this.dataset.day, this.checked)" class="peer sr-only">
+         <label for="acc-${n}-${idx}" class="inline-flex items-center gap-2 h-[40px] px-4 rounded-full text-sm select-none transition-colors bg-page text-ink peer-checked:bg-ink peer-checked:text-surface peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink ${eventBlocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-hairline peer-checked:hover:bg-ink'}">${on ? ICON.check : ''}${esc(accDay)}</label></span>`;
+      }).join('')}</div>
+     </fieldset>
     </div>
    </article>`;
 }
@@ -499,7 +564,7 @@ async function toggleAccomNeeded(evId, needed) {
     if (needed) accomDays.forEach(d => setAvLocal(uid, evId, 'ACCOM:' + d, 'yes'));
     else S.av = S.av.filter(x => !(x.user_id === uid && x.event_id === evId && String(x.day).startsWith('ACCOM:')));
   }
-  rerenderEvent(evId); // re-draw either way so the checkbox matches what is actually saved
+  rerenderEvent(evId); // re-draw either way so the switch matches what is actually saved
 }
 
 async function setAccomDay(evId, accDay, checked) {
@@ -515,12 +580,14 @@ async function setAccomDay(evId, accDay, checked) {
 
 /* ===== Profile ===== */
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+const ratingLine = u => `Foil ${esc(u.foil)} · Épée ${esc(u.epee)} · Sabre ${esc(u.sabre)} · Para ${esc(u.para)}`;
 
 function rProfile() {
   const u = S.me;
-  const inp = (id, label, v, ro, req = true, attrs = '') => `<div><label for="${id}" class="${CLS.label}">${label} ${req ? REQ : ''}</label><input id="${id}" value="${esc(v)}" ${ro ? 'readonly' : ''} ${attrs} class="${ro ? CLS.ro : CLS.input}"></div>`;
-  const rate = (l, v) => `<div class="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-3 text-center"><div class="text-[11px] font-bold uppercase tracking-wide text-slate-600">${l}</div><div class="mt-0.5 text-base font-bold text-slate-900">${esc(v)}</div></div>`;
-  const section = (title, icon, body, hint = '') => `<div class="border-t border-slate-200 pt-5"><h3 class="text-sm font-bold text-slate-900"><i class="fa-solid ${icon} text-ofa-navy mr-1.5" aria-hidden="true"></i>${title}</h3>${hint ? `<p class="mt-1 text-sm text-slate-600">${hint}</p>` : ''}<div class="mt-3">${body}</div></div>`;
+  /* Settings-page section: title and short description on the left, fields on the right. */
+  const section = (title, desc, body) => `<section class="py-8 first:pt-0 last:pb-0 md:grid md:grid-cols-3 md:gap-8">
+    <div class="mb-6 md:mb-0"><h2 class="text-base font-semibold text-ink">${title}</h2><p class="mt-1 text-sm text-ink-2">${desc}</p></div>
+    <div class="md:col-span-2 space-y-6">${body}</div></section>`;
 
   const prefs = Array.isArray(u.roommate_prefs) ? u.roommate_prefs : [];
   const names = [...new Set(S.users.filter(x => x.id !== u.id && x.active && x.name).map(x => x.name))].sort((a, b) => a.localeCompare(b));
@@ -528,47 +595,35 @@ function rProfile() {
     const saved = prefs[num - 1] || '';
     const match = names.find(n => sameName(n, saved));
     const legacy = saved && !match ? `<option value="${esc(saved)}" selected>${esc(saved)} (not found in directory)</option>` : '';
-    return `<div class="flex items-center gap-3">
-      <label for="pRoommate${num}" class="w-24 shrink-0 text-sm font-medium text-slate-700">Choice ${num}${num === 1 ? '<span class="sr-only"> (most preferred)</span>' : ''}</label>
-      <select id="pRoommate${num}" onchange="syncRoommates()" class="${CLS.input}">
+    return `<div class="flex items-center gap-4">
+      <label for="pRoommate${num}" class="w-[72px] shrink-0 text-sm text-ink-2">Choice ${num}${num === 1 ? '<span class="sr-only"> (most preferred)</span>' : ''}</label>
+      <select id="pRoommate${num}" onchange="syncRoommates()" class="${C.input}">
        <option value="">No preference</option>${legacy}
        ${names.map(n => `<option value="${esc(n)}" ${n === match ? 'selected' : ''}>${esc(n)}</option>`).join('')}
       </select></div>`;
   };
+  const rate = (l, v) => `<div class="flex items-center justify-between py-3"><dt class="text-sm text-ink-2">${l}</dt><dd class="text-sm font-medium text-ink">${esc(v)}</dd></div>`;
 
-  $('v-profile').innerHTML = `<div class="max-w-3xl">${viewHead('Profile & certification ratings', 'Update your personal details, gender, meal restrictions, and roommate preferences. Ratings are set by OFA admins.')}
-  ${panel(`<form onsubmit="saveProfile(event)" class="space-y-5" novalidate>
-   <div class="grid sm:grid-cols-2 gap-4">
-    ${inp('pName', 'Full name', u.name, false, true, 'autocomplete="name"')}
-    ${inp('pEmail', 'Email address', u.email, true)}
-    ${inp('pPhone', 'Phone number', u.phone, false, true, 'type="tel" autocomplete="tel"')}
-    ${inp('pRegion', 'Home region', u.region)}
-    <div>
-     <label for="pGender" class="${CLS.label}">Gender ${REQ}</label>
-     <select id="pGender" class="${CLS.input}">
-      <option value="">Select gender…</option>
-      <option value="Male" ${u.gender === 'Male' ? 'selected' : ''}>Male</option>
-      <option value="Female" ${u.gender === 'Female' ? 'selected' : ''}>Female</option>
-     </select>
-    </div>
-    <div>
-     <label for="pMeal" class="${CLS.label}">Meal restrictions / dietary preferences</label>
-     <input id="pMeal" value="${esc(u.meal_restrictions || '')}" placeholder="e.g. Vegetarian, Gluten-free, Halal, Allergies…" class="${CLS.input}">
-    </div>
+  $('v-profile').innerHTML = `${viewHead('Profile', 'Your details, preferences and ratings.')}
+  ${card(`<form onsubmit="saveProfile(event)" novalidate>
+   <div class="divide-y divide-hairline">
+   ${section('Personal details', 'How assignors and other officials know and reach you.', `<div class="grid sm:grid-cols-2 gap-6">
+     ${field({ id: 'pName', label: 'Full name', value: u.name, attrs: 'autocomplete="name"' })}
+     ${field({ id: 'pEmail', label: 'Email address', value: u.email, readonly: true, hint: 'Your sign-in email can’t be changed here.' })}
+     ${field({ id: 'pPhone', label: 'Phone number', value: u.phone, type: 'tel', attrs: 'autocomplete="tel"' })}
+     ${field({ id: 'pRegion', label: 'Home region', value: u.region })}
+     ${selectField({ id: 'pGender', label: 'Gender', options: genderOpts(u.gender), attrs: 'aria-required="true"' })}</div>`)}
+   ${section('Dietary needs', 'Shown to assignors on the assignor desk.',
+     field({ id: 'pMeal', label: 'Meal restrictions', value: u.meal_restrictions || '', optional: true, hint: 'For example vegetarian, gluten-free, halal or allergies.' }))}
+   ${section('Roommate preferences', 'Choose up to five officials, most preferred first. Names come from the referee directory, so they always match.',
+     `<div class="space-y-3">${[1, 2, 3, 4, 5].map(roommateSelect).join('')}</div>`)}
+   ${section('Ratings', 'Set by OFA admins.', `<dl class="-my-3 divide-y divide-hairline">${rate('Foil', u.foil)}${rate('Épée', u.epee)}${rate('Sabre', u.sabre)}${rate('Para', u.para)}</dl>`)}
+   ${section('Password', 'Leave blank to keep your current password.', `${recovering ? note('none', '', '<span class="text-ink">Enter a new password, then select Save changes.</span>') : ''}
+     ${field({ id: 'pNew', label: 'New password', type: 'password', optional: true, hint: 'At least 10 characters.', attrs: 'autocomplete="new-password"' })}`)}
    </div>
-
-   ${section('Roommate preferences', 'fa-users', `<div class="space-y-2">${[1, 2, 3, 4, 5].map(roommateSelect).join('')}</div>`,
-     'Choose other officials in order of preference (1 = top choice, 5 = lowest). Names come from the referee directory, so they always match.')}
-
-   ${section('Weapon ratings', 'fa-medal', `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">${rate('Foil', u.foil)}${rate('Épée', u.epee)}${rate('Sabre', u.sabre)}${rate('Para', u.para)}</div>`)}
-
-   ${section('Change password', 'fa-key', `${recovering ? msgBox('info', 'Enter a new password below, then select <strong>Save changes</strong>.', 'mb-3') : ''}
-    <label for="pNew" class="${CLS.label}">New password</label>
-    <input type="password" id="pNew" autocomplete="new-password" aria-describedby="pNewHint" class="${CLS.input} sm:max-w-sm">
-    <p id="pNewHint" class="mt-1 text-xs text-slate-600">Leave blank to keep your current password. At least 10 characters.</p>`)}
-
-   <div id="profileMsg" class="hidden" aria-live="polite"></div>
-   <div class="flex sm:justify-end border-t border-slate-200 pt-5"><button id="profileSave" class="${CLS.primary} w-full sm:w-auto px-6">Save changes</button></div></form>`)}</div>`;
+   <div class="mt-8 pt-8 border-t border-hairline flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-4">
+    <div id="profileMsg" data-compact class="hidden" aria-live="polite"></div>
+    <button id="profileSave" class="${C.primary}">Save changes</button></div></form>`)}`;
   syncRoommates();
   if (recovering) $('pNew').focus();
 }
@@ -580,7 +635,7 @@ function syncRoommates() {
 
 async function saveProfile(e) {
   e.preventDefault();
-  say('profileMsg');
+  say('profileMsg'); clearErrs(e.target);
   const pw = $('pNew').value;
   const gender = $('pGender').value;
   if (!gender) return fieldErr('pGender', 'profileMsg', 'Gender selection is required.');
@@ -603,24 +658,19 @@ async function saveProfile(e) {
     $('pNew').value = '';
     if (recovering && pw) { recovering = false; rProfile(); }
     $('hName').textContent = S.me.name;
-    $('greet').innerHTML = `Signed in as <span class="font-semibold text-slate-900">${esc(S.me.name)}</span> (${esc(S.me.role)})`;
-    toast('Profile saved.');
+    say('profileMsg', 'success', 'Profile saved');
   });
 }
 
 /* ===== Referee Directory Search Tab ===== */
 function rDirectory() {
-  $('v-directory').innerHTML = `${viewHead('Referee directory', 'Search and view active referees, their regions, genders, and weapon ratings.')}
-  ${tablePanel(`
-   <div class="mb-4 sm:max-w-sm">
-    <label for="dirSearchInput" class="${CLS.label}">Search by name or region</label>
-    <div class="relative">
-     <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></span>
-     <input type="search" id="dirSearchInput" value="${esc(dirQuery)}" oninput="updateDirQuery(this.value)" autocomplete="off" class="${CLS.input} pl-9">
-    </div>
+  $('v-directory').innerHTML = `${viewHead('Directory', 'Active referees, their regions and ratings.')}
+   <div class="max-w-form mb-6">
+    <label for="dirSearchInput" class="${C.label}">Search</label>
+    <input type="search" id="dirSearchInput" value="${esc(dirQuery)}" oninput="updateDirQuery(this.value)" autocomplete="off" placeholder="Name or region" class="${C.input}">
    </div>
-   <div id="dirResults"></div>
-   <p id="dirCount" class="text-sm text-slate-600 mt-4" aria-live="polite"></p>`)}`;
+   <p id="dirCount" class="mb-4 text-sm text-ink-3" aria-live="polite"></p>
+   <div id="dirResults"></div>`;
   drawDirectory();
 }
 function drawDirectory() {
@@ -634,21 +684,15 @@ function drawDirectory() {
     return fullName.includes(query) || region.includes(query);
   });
 
-  const td = `${TB.td} ${TB.lbl}`;
-  const rate = (l, v) => `<td data-label="${l}" class="${td} max-md:rounded-lg max-md:bg-slate-50 max-md:px-2 max-md:py-1.5 font-mono font-semibold text-slate-900">${esc(v)}</td>`;
-  const rows = filteredUsers.map(r => `
-    <tr class="${TB.tr} max-md:grid-cols-4">
-     <td class="${TB.td} max-md:col-span-4 font-semibold text-slate-900 max-md:text-base">${esc(r.name)}</td>
-     <td data-label="Gender" class="${td} max-md:col-span-2 text-slate-700">${esc(r.gender || '—')}</td>
-     <td data-label="Region" class="${td} max-md:col-span-2 text-slate-700">${esc(r.region || '—')}</td>
-     ${rate('Foil', r.foil)}${rate('Épée', r.epee)}${rate('Sabre', r.sabre)}${rate('Para', r.para)}
-    </tr>`).join('');
-
-  $('dirResults').innerHTML = filteredUsers.length ? `<div class="md:overflow-x-auto"><table class="${TB.table}">
-     <thead class="${TB.thead}"><tr>${['Name', 'Gender', 'Region', 'Foil', 'Épée', 'Sabre', 'Para'].map(h => `<th scope="col" class="${TB.th}">${h}</th>`).join('')}</tr></thead>
-     <tbody class="${TB.tbody}">${rows}</tbody></table></div>`
-    : panel('<p class="text-sm text-slate-600">No referees found matching your search.</p>');
-  $('dirCount').textContent = `Showing ${filteredUsers.length} referee(s)`;
+  $('dirResults').innerHTML = filteredUsers.length
+    ? `<ul class="space-y-3 md:space-y-0 md:bg-surface md:rounded-card md:shadow-card md:divide-y md:divide-hairline md:px-6">${filteredUsers.map(r => `
+      <li class="bg-surface rounded-card shadow-card p-6 md:bg-transparent md:rounded-none md:shadow-none md:px-0 md:py-4 md:flex md:items-baseline md:justify-between md:gap-6">
+       <div class="min-w-0"><p class="text-base font-medium text-ink">${esc(r.name)}</p>
+        <p class="mt-1 text-sm text-ink-2">${[r.region, r.gender].filter(Boolean).map(esc).join(' · ') || '—'}</p></div>
+       <p class="mt-3 md:mt-0 text-sm text-ink-2 md:text-right">${ratingLine(r)}</p>
+      </li>`).join('')}</ul>`
+    : emptyState(`No active referees match “${esc(dirQuery.trim())}”.`, `<button type="button" onclick="updateDirQuery(''); $('dirSearchInput').value=''; $('dirSearchInput').focus()" class="${C.link}">Clear search</button>`);
+  $('dirCount').textContent = `${filteredUsers.length} ${filteredUsers.length === 1 ? 'referee' : 'referees'}`;
 }
 
 function updateDirQuery(val) {
@@ -657,16 +701,22 @@ function updateDirQuery(val) {
 }
 
 /* ===== Assignor desk ===== */
-const DOT = { yes: ['fa-solid fa-circle-check text-emerald-700', 'Full day'], am: [null, 'Morning only'], pm: [null, 'Afternoon only'], no: ['fa-solid fa-circle-xmark text-red-700', 'Unavailable'], none: ['fa-regular fa-circle text-slate-500', 'No answer'] };
+/* Per-day letters. [letter, meaning] */
+const DAYTOK = { yes: ['F', 'Full day'], am: ['AM', 'Morning only'], pm: ['PM', 'Afternoon only'], no: ['–', 'Unavailable'], none: ['', 'No answer'] };
 
 function rAssignor() {
   if (!S.events.find(e => e.id === aEv)) aEv = S.events[0]?.id;
   const ev = S.events.find(e => e.id === aEv);
-  if (!ev) { $('v-assignor').innerHTML = viewHead('Assignor review & roster', '') + panel('<p class="text-sm text-slate-600">No tournaments to staff yet.</p>'); return; }
-  const dot = (v, d, i) => {
-    const [cls, txt] = DOT[v || 'none'];
-    const mark = cls ? `<i class="${cls}" aria-hidden="true"></i>` : `<span class="text-[11px] font-bold text-sky-800" aria-hidden="true">${v.toUpperCase()}</span>`;
-    return `<li title="${esc(d)}: ${txt}" class="inline-flex items-center gap-1 rounded-md bg-slate-50 ring-1 ring-slate-200 px-1.5 py-0.5"><span class="text-[11px] font-semibold text-slate-600" aria-hidden="true">${i + 1}</span>${mark}<span class="sr-only">${esc(d)}: ${txt}</span></li>`;
+  const head = viewHead('Assignor desk', 'See who’s available for each tournament and build the roster.',
+    ev ? `<button type="button" data-key="rooming" onclick="openRoomingModal()" class="${C.primary} shrink-0">Generate rooming list</button>` : '');
+  if (!ev) {
+    $('v-assignor').innerHTML = head + emptyState('There are no tournaments to staff yet.',
+      S.me?.role === 'admin' ? `<button type="button" onclick="go('admin')" class="${C.secondary}">Add a tournament</button>` : '');
+    return;
+  }
+  const tok = (v, d) => {
+    const [l, t] = DAYTOK[v || 'none'];
+    return `<li title="${esc(d)}: ${t}" class="inline-flex items-center justify-center min-w-[32px] h-6 px-2 rounded-full text-xs ${v === 'yes' || v === 'am' || v === 'pm' ? 'bg-page text-ink font-medium' : 'text-ink-3'}">${l ? `<span aria-hidden="true">${l}</span>` : dot('none')}<span class="sr-only">${esc(d)}: ${t}</span></li>`;
   };
 
   let activeUsers = S.users.filter(r => r.active);
@@ -699,43 +749,40 @@ function rAssignor() {
     const isAssignDisabled = s === 'unavailable' || (rcOrUnratedOnly && !isAdmin);
 
     const requestedNights = accomDays.filter(d => accomOf(r.id, ev.id, d));
-    const accomDisplay = requestedNights.length > 0
-      ? `<span class="font-semibold text-blue-800">Yes (${requestedNights.length})</span> <span class="text-slate-600 text-xs">${esc(requestedNights.join(', '))}</span>`
-      : `<span class="text-slate-600">No</span>`;
-
-    const mealDisplay = r.meal_restrictions
-      ? `<span class="text-slate-900">${esc(r.meal_restrictions)}</span>`
-      : `<span class="text-slate-600">—</span>`;
+    const needs = [
+      requestedNights.length ? `<p><span class="text-ink">Room</span> <span class="text-ink-2">${esc(requestedNights.join(', '))}</span></p>` : '',
+      r.meal_restrictions ? `<p><span class="text-ink">Meals</span> <span class="text-ink-2">${esc(r.meal_restrictions)}</span></p>` : '',
+    ].join('') || '<span class="text-ink-3">—</span>';
+    const nameSr = `<span class="sr-only"> ${esc(r.name)}</span>`;
+    const dataAttrs = `data-ev="${esc(ev.id)}" data-user="${esc(r.id)}" data-on="${on}" data-key="asg:${esc(r.id)}" onclick="toggleAssign(this.dataset.ev, this.dataset.user, this.dataset.on === 'true')"`;
+    const action = on
+      ? `<div class="flex items-center gap-4 md:justify-end"><span class="inline-flex items-center gap-2 h-8 px-3 rounded-full bg-ink text-surface text-sm font-medium whitespace-nowrap">${ICON.check}Assigned</span>
+         ${isAssignDisabled ? '' : `<button type="button" ${dataAttrs} class="${C.link}">Unassign${nameSr}</button>`}</div>`
+      : `<button type="button" ${isAssignDisabled ? 'disabled' : ''} ${dataAttrs} ${rcOrUnratedOnly && !isAdmin ? 'aria-describedby="rcRule"' : ''} class="${C.secondary} !h-8 max-md:!h-[40px] max-md:w-full">Assign${nameSr}</button>`;
 
     return `<tr class="${TB.tr} max-md:grid-cols-2">
-     <td class="${TB.td} max-md:order-1"><div class="font-semibold text-slate-900">${esc(r.name)}</div><div class="text-xs text-slate-600">${esc(r.gender || '—')}</div></td>
-     <td data-label="Region" class="${td} max-md:order-3 text-slate-700">${esc(r.region)}</td>
-     <td data-label="Foil / Épée / Sabre" class="${td} max-md:order-4 text-slate-800"><span class="font-mono md:whitespace-nowrap">${esc(r.foil)} / ${esc(r.epee)} / ${esc(r.sabre)}</span>${rcOrUnratedOnly ? '<span class="mt-1 block w-fit text-[11px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">Admin only</span>' : ''}</td>
-     <td data-label="Days" class="${td} max-md:order-5 max-md:col-span-2"><ul class="flex flex-wrap md:flex-nowrap gap-1">${ev.days.map((d, i) => dot(avOf(r.id, ev.id, d), d, i)).join('')}</ul></td>
-     <td data-label="Accommodation" class="${td} max-md:order-6 max-md:col-span-2 md:max-w-[14rem]">${accomDisplay}</td>
-     <td data-label="Meal restrictions" class="${td} max-md:order-7 max-md:col-span-2 md:max-w-[12rem]">${mealDisplay}</td>
-     <td class="${TB.td} max-md:order-2 max-md:justify-self-end">${pill(s)}</td>
-     <td class="${TB.td} max-md:order-8 max-md:col-span-2 md:text-right">
-      <button type="button" ${isAssignDisabled ? 'disabled' : ''} data-ev="${esc(ev.id)}" data-user="${esc(r.id)}" data-on="${on}" data-key="asg:${esc(r.id)}" onclick="toggleAssign(this.dataset.ev, this.dataset.user, this.dataset.on === 'true')" ${rcOrUnratedOnly && !isAdmin ? 'aria-describedby="rcRule"' : ''}
-       class="${on ? CLS.primary : CLS.secondary} max-md:w-full !py-2 whitespace-nowrap">${on ? '<i class="fa-solid fa-check" aria-hidden="true"></i>Assigned' : 'Assign'}<span class="sr-only"> ${esc(r.name)}${on ? ' (select to unassign)' : ''}</span></button></td></tr>`;
+     <td class="${TB.td} max-md:order-1"><p class="font-medium text-ink">${esc(r.name)}</p><p class="text-ink-2">${[r.region, r.gender].filter(Boolean).map(esc).join(' · ') || '—'}</p></td>
+     <td data-label="Ratings" class="${td} max-md:order-3 max-md:col-span-2 text-ink">Foil ${esc(r.foil)} · Épée ${esc(r.epee)} · Sabre ${esc(r.sabre)}
+      ${rcOrUnratedOnly ? `<p class="mt-1 inline-flex items-center gap-2 text-ink-2">${dot('warning')}Admin only</p>` : ''}</td>
+     <td data-label="Days" class="${td} max-md:order-4 max-md:col-span-2"><ul class="flex flex-wrap md:flex-nowrap gap-1">${ev.days.map(d => tok(avOf(r.id, ev.id, d), d)).join('')}</ul></td>
+     <td data-label="Room and meals" class="${td} max-md:order-5 max-md:col-span-2 md:max-w-[220px] space-y-1">${needs}</td>
+     <td class="${TB.td} max-md:order-2 max-md:justify-self-end">${statusLabel(s)}</td>
+     <td class="${TB.td} max-md:order-6 max-md:col-span-2 md:text-right">${action}</td></tr>`;
   }).join('');
 
-  const head = ['Referee', 'Region', 'Foil / Épée / Sabre', 'Days', 'Accommodation', 'Meal restrictions', 'Status', '<span class="sr-only">Assignment</span>'];
   const assignedCount = S.asg.filter(a => a.event_id === ev.id).length;
 
-  $('v-assignor').innerHTML = `${viewHead('Assignor review & roster', 'Check availability by day and assign referees to the tournament.',
-    `<button type="button" data-key="rooming" onclick="openRoomingModal()" class="${CLS.primary} shrink-0"><i class="fa-solid fa-bed" aria-hidden="true"></i> Generate rooming list</button>`)}
-  ${tablePanel(`
-  <div id="rcRule">${msgBox('warn', '<strong>Referees holding only Rc and Unrated licenses may only be hired by the OFA Candidate coordinator or after consultation with the OFA CAN COORD. A minimum of one full R license is required to be hired at sanctioned OFA events by Assignors/Organizers.</strong>', 'mb-4')}</div>
-  <div id="asgMsg" class="hidden mb-4" aria-live="polite"></div>
-  <div class="grid gap-3 sm:grid-cols-2 lg:flex lg:gap-4 mb-4">
-   <div class="lg:w-80">
-    <label for="aEvSel" class="${CLS.label}">Tournament</label>
-    <select id="aEvSel" data-key="aEv" onchange="aEv=this.value;withFocus(rAssignor)" class="${CLS.input} font-medium">${S.events.map(e => `<option value="${esc(e.id)}" ${e.id === aEv ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+  $('v-assignor').innerHTML = `${head}
+  <div id="rcRule" class="mb-8">${note('warning', '', 'Referees holding only Rc and Unrated licenses may only be hired by the OFA Candidate coordinator or after consultation with the OFA CAN COORD. A minimum of one full R license is required to be hired at sanctioned OFA events by Assignors/Organizers.', '!bg-surface shadow-card')}</div>
+  <div id="asgMsg" data-surface class="hidden mb-6" aria-live="polite"></div>
+  <div class="grid gap-4 sm:grid-cols-2 md:flex md:gap-6 mb-6">
+   <div class="md:w-[320px]">
+    <label for="aEvSel" class="${C.label}">Tournament</label>
+    <select id="aEvSel" data-key="aEv" onchange="aEv=this.value;withFocus(rAssignor)" class="${C.input}">${S.events.map(e => `<option value="${esc(e.id)}" ${e.id === aEv ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
    </div>
-   <div class="lg:w-72">
-    <label for="aSortSel" class="${CLS.label}">Sort by</label>
-    <select id="aSortSel" data-key="aSort" onchange="aSort=this.value;withFocus(rAssignor)" class="${CLS.input} font-medium">
+   <div class="md:w-[280px]">
+    <label for="aSortSel" class="${C.label}">Sort by</label>
+    <select id="aSortSel" data-key="aSort" onchange="aSort=this.value;withFocus(rAssignor)" class="${C.input}">
      <option value="name" ${aSort === 'name' ? 'selected' : ''}>Name (A-Z)</option>
      <option value="availability" ${aSort === 'availability' ? 'selected' : ''}>Availability (Available first)</option>
      <option value="unassigned" ${aSort === 'unassigned' ? 'selected' : ''}>Assignment (Unassigned first)</option>
@@ -743,15 +790,12 @@ function rAssignor() {
     </select>
    </div>
   </div>
-  <p class="mb-4 text-xs text-slate-600"><span class="font-semibold text-slate-800">Days:</span> ${ev.days.map((d, i) => `${i + 1} = ${esc(d)}`).join(' · ')}
-   <span class="ml-2 whitespace-nowrap"><i class="fa-solid fa-circle-check text-emerald-700" aria-hidden="true"></i> full</span>
-   <span class="ml-2 whitespace-nowrap"><span class="font-bold text-sky-800">AM/PM</span> half</span>
-   <span class="ml-2 whitespace-nowrap"><i class="fa-solid fa-circle-xmark text-red-700" aria-hidden="true"></i> unavailable</span>
-   <span class="ml-2 whitespace-nowrap"><i class="fa-regular fa-circle text-slate-500" aria-hidden="true"></i> no answer</span></p>
-  <div class="md:overflow-x-auto"><table class="${TB.table}"><caption class="sr-only">Referees for ${esc(ev.name)}</caption>
-   <thead class="${TB.thead}"><tr>${head.map(h => `<th scope="col" class="${TB.th}">${h}</th>`).join('')}</tr></thead>
+  <p class="mb-4 text-sm text-ink-2 max-w-prose">Days, in order: ${ev.days.map(esc).join(', ')}. <span class="text-ink-3">F full day · AM or PM half day · – unavailable · <span class="inline-flex align-middle">${dot('none')}</span> no answer</span></p>
+  <p class="mb-4 text-sm text-ink-2" aria-live="polite"><span class="font-medium text-ink">${assignedCount}</span> assigned</p>
+  <div class="${TB.wrap}"><table class="${TB.table}"><caption class="sr-only">Referees for ${esc(ev.name)}</caption>
+   <thead class="${TB.thead}"><tr>${['Referee', 'Ratings', 'Days', 'Room and meals', 'Status', '<span class="sr-only">Assignment</span>'].map(h => `<th scope="col" class="${TB.th}">${h}</th>`).join('')}</tr></thead>
    <tbody class="${TB.tbody}">${rows}</tbody></table></div>
-  <p class="text-sm font-medium text-slate-700 mt-4" aria-live="polite">${assignedCount} assigned</p>`)}`;
+  ${activeUsers.length ? '' : emptyState('No active referees yet.')}`;
 }
 
 async function toggleAssign(evId, userId, on) {
@@ -848,29 +892,26 @@ function openRoomingModal() {
   }
 
   const roomsHtml = rooms.map((room, idx) => {
-    const occ = room.occupants.map(o => `<li><span class="font-semibold text-slate-900">${esc(o.name)}</span> <span class="text-xs text-slate-600">(${esc(o.gender || '—')}, Reg: ${esc(o.region)})</span></li>`).join('');
+    const occ = room.occupants.map(o => `<li><span class="font-medium text-ink">${esc(o.name)}</span> <span class="text-ink-2">${[o.gender, o.region].filter(Boolean).map(esc).join(' · ')}</span></li>`).join('');
     const sharedNights = accomDays.filter(d => room.occupants.every(o => accomOf(o.id, ev.id, d)));
 
-    return `<li class="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-3.5 text-sm">
-      <div class="flex items-start justify-between gap-3">
-       <h4 class="font-bold text-slate-900">Room #${idx + 1} <span class="font-medium text-slate-600">(${room.type})</span></h4>
-       <span class="shrink-0 rounded bg-white px-2 py-0.5 text-[11px] font-bold uppercase text-slate-700 ring-1 ring-slate-300">${room.occupants.length} Guest(s)</span>
-      </div>
-      <ul class="mt-1 space-y-0.5">${occ}</ul>
-      <p class="mt-1.5 text-xs text-blue-800"><i class="fa-solid fa-calendar-days mr-1" aria-hidden="true"></i>Nights: ${esc(sharedNights.join(', ') || 'Partial/Mixed nights')}</p>
+    return `<li class="py-4 first:pt-0 sm:grid sm:grid-cols-[96px_1fr] sm:gap-4 text-sm">
+      <p class="font-medium text-ink">Room ${idx + 1}<span class="block font-normal text-ink-3">${room.type}</span></p>
+      <div class="mt-1 sm:mt-0"><ul class="space-y-1">${occ}</ul>
+       <p class="mt-2 text-ink-2">Nights: ${esc(sharedNights.join(', ') || 'Partial/Mixed nights')}</p></div>
     </li>`;
   }).join('');
 
   openModal(`
-   <div class="flex justify-between items-start gap-3 mb-3">
-    <h3 id="modalTitle" class="text-lg font-bold text-slate-900">Optimized rooming list</h3>
-    <button type="button" onclick="closeModal()" aria-label="Close" class="no-print ${CLS.icon} -mt-1 -mr-2"><i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i></button>
+   <div class="flex justify-between items-start gap-4 mb-2">
+    <h2 id="modalTitle" class="text-xl font-semibold text-ink">Rooming list</h2>
+    <button type="button" onclick="closeModal()" aria-label="Close" class="no-print ${C.iconBtn} -mt-2 -mr-2">${ICON.x}</button>
    </div>
-   <p class="text-sm text-slate-600 mb-4">Generated for <strong class="text-slate-900">${esc(ev.name)}</strong> based on assigned staff, night overlap harmony, and mutual roommate preferences (max 2 per room).</p>
-   <ol class="print-scroll space-y-3 max-h-[60vh] overflow-y-auto pr-1">${roomsHtml}</ol>
-   <div class="no-print flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-4 border-t border-slate-200 mt-4">
-    <button type="button" onclick="closeModal()" class="${CLS.secondary}">Close</button>
-    <button type="button" onclick="window.print()" class="${CLS.primary}"><i class="fa-solid fa-print" aria-hidden="true"></i>Print list</button>
+   <p class="text-sm text-ink-2 mb-6">${esc(ev.name)} · ${rooms.length} ${rooms.length === 1 ? 'room' : 'rooms'}. Pairs assigned referees by matching nights and mutual roommate preferences, at most two per room.</p>
+   <ol class="print-scroll divide-y divide-hairline max-h-[60vh] overflow-y-auto">${roomsHtml}</ol>
+   <div class="no-print flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-6 mt-2 border-t border-hairline">
+    <button type="button" onclick="closeModal()" class="${C.secondary} !h-12">Close</button>
+    <button type="button" onclick="window.print()" class="${C.primary}">Print list</button>
    </div>
   `);
 }
@@ -882,32 +923,34 @@ function rAdmin() {
     const needsReview = (isCompletelyUnrated(r) && (!r.phone || r.phone === '') && (!r.region || r.region === '')) || !r.gender;
 
     return `<tr class="${TB.tr} max-md:grid-cols-2">
-     <td class="${TB.td} max-md:col-span-2"><div class="flex flex-wrap items-center gap-2"><span class="font-semibold text-slate-900">${esc(r.name)}</span>
-      ${needsReview ? '<span class="text-[11px] font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">Needs review</span><span class="sr-only">: profile details, gender, or ratings have not been configured yet</span>' : ''}</div></td>
-     <td data-label="Email" class="${td} max-md:col-span-2 text-slate-700 break-all">${esc(r.email)}</td>
-     <td data-label="Gender" class="${td} text-slate-700">${esc(r.gender || '—')}</td>
-     <td data-label="Role" class="${td} font-semibold text-ofa-navy capitalize">${esc(r.role)}</td>
-     <td data-label="Region" class="${td} text-slate-700">${esc(r.region || '—')}</td>
-     <td data-label="Status" class="${td}">${r.active ? '<span class="text-emerald-800 font-medium">Active</span>' : '<span class="text-red-700 font-semibold">Inactive</span>'}</td>
-     <td class="${TB.td} max-md:col-span-2 md:text-right"><button type="button" data-user="${esc(r.id)}" data-key="user:${esc(r.id)}" onclick="userModal(this.dataset.user)" class="${CLS.icon} max-md:w-full max-md:border max-md:border-slate-300"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="md:sr-only">Edit</span><span class="sr-only"> ${esc(r.name)}</span></button></td></tr>`;
+     <td class="${TB.td} max-md:order-1 max-md:col-span-2"><p class="font-medium text-ink">${esc(r.name)}</p><p class="text-ink-2 [overflow-wrap:anywhere]">${esc(r.email)}</p>
+      ${needsReview ? `<p class="mt-1 inline-flex items-center gap-2 text-ink-2">${dot('warning')}Needs review<span class="sr-only">: profile details, gender, or ratings have not been configured yet</span></p>` : ''}</td>
+     <td data-label="Role" class="${td} max-md:order-3 text-ink capitalize">${esc(r.role)}</td>
+     <td data-label="Region" class="${td} max-md:order-4 text-ink-2">${esc(r.region || '—')}</td>
+     <td data-label="Gender" class="${td} max-md:order-5 text-ink-2">${esc(r.gender || '—')}</td>
+     <td data-label="Status" class="${td} max-md:order-6"><span class="inline-flex items-center gap-2 text-ink-2">${dot(r.active ? 'success' : 'danger')}${r.active ? 'Active' : 'Inactive'}</span></td>
+     <td class="${TB.td} max-md:order-7 max-md:col-span-2 md:text-right"><button type="button" data-user="${esc(r.id)}" data-key="user:${esc(r.id)}" onclick="userModal(this.dataset.user)" class="${C.link}">Edit<span class="sr-only"> ${esc(r.name)}</span></button></td></tr>`;
   }).join('');
 
-  $('v-admin').innerHTML = `${viewHead('Admin', 'Manage referee accounts, roles, ratings, and tournaments.')}
-  <div class="space-y-6">
-  ${tablePanel(`<h3 class="text-lg font-bold text-slate-900">Referees</h3>
-   <p class="mt-1 text-sm text-slate-600 mb-4">Referees create their own accounts from the sign-in page. Set their role and ratings here. To delete an account permanently, use Supabase &gt; Authentication &gt; Users.</p>
-   <div class="md:overflow-x-auto"><table class="${TB.table}"><caption class="sr-only">Referee accounts</caption>
-    <thead class="${TB.thead}"><tr>${['Name', 'Email', 'Gender', 'Role', 'Region', 'Status', '<span class="sr-only">Edit</span>'].map(h => `<th scope="col" class="${TB.th}">${h}</th>`).join('')}</tr></thead>
-    <tbody class="${TB.tbody}">${users}</tbody></table></div>`)}
-  ${panel(`<div class="flex flex-wrap justify-between items-center gap-3 mb-2"><h3 class="text-lg font-bold text-slate-900">Tournaments</h3>
-   <button type="button" id="addEvBtn" data-key="addEv" onclick="evModal()" class="${CLS.primary} !py-2"><i class="fa-solid fa-plus" aria-hidden="true"></i>Add tournament</button></div>
-   ${S.events.length ? `<ul class="divide-y divide-slate-100">${S.events.map(ev => `<li class="py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-    <div class="min-w-0"><div class="font-semibold text-slate-900">${esc(ev.name)}</div>
-     <div class="text-sm text-slate-600">${esc(ev.date_range)} · ${esc(ev.location)} · ${ev.days.length} day(s)</div></div>
-    <div class="flex gap-1 shrink-0">
-     <button type="button" data-ev="${esc(ev.id)}" data-key="evedit:${esc(ev.id)}" onclick="evModal(this.dataset.ev)" class="${CLS.icon}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span>Edit</span><span class="sr-only"> ${esc(ev.name)}</span></button>
-     <button type="button" data-ev="${esc(ev.id)}" data-key="evdel:${esc(ev.id)}" onclick="delEv(this.dataset.ev)" class="${CLS.icon} hover:!text-red-700 hover:!bg-red-50"><i class="fa-solid fa-trash" aria-hidden="true"></i><span>Delete</span><span class="sr-only"> ${esc(ev.name)}</span></button>
-    </div></li>`).join('')}</ul>` : '<p class="text-sm text-slate-600">No tournaments yet.</p>'}`)}</div>`;
+  $('v-admin').innerHTML = `${viewHead('Admin', 'Manage referee accounts and tournaments.')}
+  <div class="space-y-12">
+   <section>
+    ${sectionHead('Referees', 'Referees create their own accounts from the sign-in page. Set their role and ratings here. To delete an account permanently, use Supabase &gt; Authentication &gt; Users.')}
+    ${S.users.length ? `<div class="${TB.wrap}"><table class="${TB.table}"><caption class="sr-only">Referee accounts</caption>
+     <thead class="${TB.thead}"><tr>${['Name', 'Role', 'Region', 'Gender', 'Status', '<span class="sr-only">Edit</span>'].map(h => `<th scope="col" class="${TB.th}">${h}</th>`).join('')}</tr></thead>
+     <tbody class="${TB.tbody}">${users}</tbody></table></div>` : emptyState('No referee accounts yet. They’ll appear here when referees sign up.')}
+   </section>
+   <section>
+    ${sectionHead('Tournaments', 'Referees mark their availability for each tournament listed here.', `<button type="button" id="addEvBtn" data-key="addEv" onclick="evModal()" class="${C.primary} shrink-0">Add tournament</button>`)}
+    ${S.events.length ? card(`<ul class="-my-4 divide-y divide-hairline">${S.events.map(ev => `<li class="py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+     <div class="min-w-0"><p class="font-medium text-ink">${esc(ev.name)}</p>
+      <p class="text-sm text-ink-2">${esc(ev.date_range)} · ${esc(ev.location)} · ${ev.days.length} ${ev.days.length === 1 ? 'day' : 'days'}</p></div>
+     <div class="flex gap-6 shrink-0">
+      <button type="button" data-ev="${esc(ev.id)}" data-key="evedit:${esc(ev.id)}" onclick="evModal(this.dataset.ev)" class="${C.link}">Edit<span class="sr-only"> ${esc(ev.name)}</span></button>
+      <button type="button" data-ev="${esc(ev.id)}" data-key="evdel:${esc(ev.id)}" onclick="delEv(this.dataset.ev)" class="${C.link}">Delete<span class="sr-only"> ${esc(ev.name)}</span></button>
+     </div></li>`).join('')}</ul>`, '!py-4 sm:!py-4') : emptyState('No tournaments yet. Add one so referees can mark their availability.')}
+   </section>
+  </div>`;
 }
 async function delEv(id) {
   const ev = S.events.find(x => x.id === id);
@@ -922,10 +965,10 @@ async function delEv(id) {
 /* ===== Modals ===== */
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 let modalReturn = null, confirmResolve = null;
-function openModal(html, size = 'max-w-lg') {
+function openModal(html, size = 'max-w-[560px]') {
   const m = $('modal');
   if (m.classList.contains('hidden')) modalReturn = { el: document.activeElement, key: document.activeElement?.dataset?.key };
-  m.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="modalTitle" class="bg-white rounded-2xl shadow-xl w-full ${size} p-5 sm:p-6 my-4 sm:my-8">${html}</div>`;
+  m.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="modalTitle" class="bg-surface rounded-card shadow-pop w-full ${size} p-6 sm:p-8 my-4 sm:my-8">${html}</div>`;
   m.classList.remove('hidden'); m.classList.add('flex');
   document.querySelectorAll('body > header, body > main, body > footer, body > a').forEach(x => x.inert = true);
   document.body.classList.add('overflow-hidden');
@@ -955,38 +998,38 @@ document.addEventListener('keydown', e => {
 /* Promise-based replacement for confirm(). */
 function askConfirm({ title, body, ok = 'Confirm', danger = false }) {
   return new Promise(res => {
-    openModal(`<h3 id="modalTitle" class="text-lg font-bold text-slate-900">${esc(title)}</h3>
-      <p class="mt-2 text-sm text-slate-700">${esc(body)}</p>
-      <div class="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-       <button type="button" onclick="closeModal()" autofocus class="${CLS.secondary}">Cancel</button>
-       <button type="button" id="confirmOk" class="${danger ? CLS.danger : CLS.primary}">${esc(ok)}</button></div>`, 'max-w-md');
+    openModal(`<h2 id="modalTitle" class="text-xl font-semibold text-ink">${esc(title)}</h2>
+      <p class="mt-2 text-base text-ink-2">${esc(body)}</p>
+      <div class="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+       <button type="button" onclick="closeModal()" autofocus class="${C.secondary} !h-12">Cancel</button>
+       <button type="button" id="confirmOk" class="${danger ? C.danger : C.primary}">${esc(ok)}</button></div>`, 'max-w-form');
     confirmResolve = res;
     $('confirmOk').onclick = () => { confirmResolve = null; closeModal(); res(true); };
   });
 }
-const fld = (n, l, v = '', x = '') => `<div><label for="f-${n}" class="${CLS.label}">${l}</label><input id="f-${n}" name="${n}" value="${esc(v)}" required ${x} class="${/readonly/.test(x) ? CLS.ro : CLS.input}"></div>`;
-const opts = (arr, v) => arr.map(x => `<option ${x === v ? 'selected' : ''}>${x}</option>`).join('');
+/* Admin form field (always required, as before). */
+const fld = (n, l, v = '', x = '') => field({ id: `f-${n}`, name: n, label: l, value: v, readonly: /readonly/.test(x), attrs: `required ${x.replace('readonly', '')}` });
 const btns = `<div id="modalMsg" class="hidden" aria-live="polite"></div>
-  <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2"><button type="button" onclick="closeModal()" class="${CLS.secondary}">Cancel</button><button id="modalSave" class="${CLS.primary}">Save</button></div>`;
-const modalHead = title => `<div class="flex justify-between items-start gap-3 mb-4"><h3 id="modalTitle" class="text-lg font-bold text-slate-900">${title}</h3>
-  <button type="button" onclick="closeModal()" aria-label="Close" class="${CLS.icon} -mt-1 -mr-2"><i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i></button></div>`;
+  <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2"><button type="button" onclick="closeModal()" class="${C.secondary} !h-12">Cancel</button><button id="modalSave" class="${C.primary}">Save</button></div>`;
+const modalHead = title => `<div class="flex justify-between items-start gap-4 mb-6"><h2 id="modalTitle" class="text-xl font-semibold text-ink">${title}</h2>
+  <button type="button" onclick="closeModal()" aria-label="Close" class="${C.iconBtn} -mt-2 -mr-2">${ICON.x}</button></div>`;
 
 function userModal(id) {
   const u = S.users.find(x => x.id === id);
-  const sel = (n, label, arr) => `<div><label for="f-${n}" class="${CLS.label}">${label}</label><select id="f-${n}" name="${n}" class="${CLS.input} font-medium">${opts(arr, u[n])}</select></div>`;
-  openModal(`${modalHead(`Edit ${esc(u.name)}`)}<form data-id="${esc(id)}" onsubmit="saveUser(event, this.dataset.id)" class="space-y-4">
-   <div class="grid sm:grid-cols-2 gap-4">${fld('name', 'Full name', u.name)}${fld('email', 'Email address', u.email, 'readonly')}${fld('phone', 'Phone', u.phone)}${fld('region', 'Home region', u.region)}
-   <div><label for="f-gender" class="${CLS.label}">Gender</label><select id="f-gender" name="gender" class="${CLS.input}"><option value="">Select gender…</option><option value="Male" ${u.gender === 'Male' ? 'selected' : ''}>Male</option><option value="Female" ${u.gender === 'Female' ? 'selected' : ''}>Female</option></select></div>
-   <div><label for="f-meal" class="${CLS.label}">Meal restrictions</label><input id="f-meal" name="meal_restrictions" value="${esc(u.meal_restrictions || '')}" class="${CLS.input}"></div>
-   <div><label for="f-role" class="${CLS.label}">Role</label><select id="f-role" name="role" class="${CLS.input}">${opts(['referee', 'assignor', 'admin'], u.role)}</select></div>
-   <div><label for="f-active" class="${CLS.label}">Status</label><select id="f-active" name="active" class="${CLS.input}"><option value="1" ${u.active ? 'selected' : ''}>Active</option><option value="0" ${u.active ? '' : 'selected'}>Inactive</option></select></div></div>
-   <fieldset class="border-t border-slate-200 pt-4"><legend class="sr-only">Weapon ratings</legend><p class="text-sm font-bold text-slate-900 mb-3" aria-hidden="true">Weapon ratings</p>
-   <div class="grid grid-cols-2 gap-3">${sel('foil', 'Foil', WR)}${sel('epee', 'Épée', WR)}${sel('sabre', 'Sabre', WR)}${sel('para', 'Para', PR)}</div></fieldset>${btns}</form>`);
+  const sel = (n, label, arr) => selectField({ id: `f-${n}`, name: n, label, options: opts(arr, u[n]) });
+  openModal(`${modalHead(`Edit ${esc(u.name)}`)}<form data-id="${esc(id)}" onsubmit="saveUser(event, this.dataset.id)" class="space-y-6">
+   <div class="grid sm:grid-cols-2 gap-6">${fld('name', 'Full name', u.name)}${fld('email', 'Email address', u.email, 'readonly')}${fld('phone', 'Phone', u.phone)}${fld('region', 'Home region', u.region)}
+   ${selectField({ id: 'f-gender', name: 'gender', label: 'Gender', options: genderOpts(u.gender) })}
+   ${field({ id: 'f-meal', name: 'meal_restrictions', label: 'Meal restrictions', value: u.meal_restrictions || '', optional: true })}
+   ${selectField({ id: 'f-role', name: 'role', label: 'Role', options: opts(['referee', 'assignor', 'admin'], u.role) })}
+   ${selectField({ id: 'f-active', name: 'active', label: 'Status', options: `<option value="1" ${u.active ? 'selected' : ''}>Active</option><option value="0" ${u.active ? '' : 'selected'}>Inactive</option>` })}</div>
+   <fieldset class="pt-6 border-t border-hairline"><legend class="text-base font-semibold text-ink">Ratings</legend>
+   <div class="mt-4 grid grid-cols-2 gap-6">${sel('foil', 'Foil', WR)}${sel('epee', 'Épée', WR)}${sel('sabre', 'Sabre', WR)}${sel('para', 'Para', PR)}</div></fieldset>${btns}</form>`);
 }
 async function saveUser(e, id) {
   e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)), u = S.users.find(x => x.id === id);
   const admins = S.users.filter(x => x.role === 'admin' && x.active).length;
-  if (u.role === 'admin' && u.active && (f.role !== 'admin' || f.active === '0') && admins < 2) return say('modalMsg', 'error', 'Keep at least one active admin.');
+  if (u.role === 'admin' && u.active && (f.role !== 'admin' || f.active === '0') && admins < 2) return fieldErr('f-role', 'modalMsg', 'Keep at least one active admin.');
   const row = { name: f.name.trim(), phone: f.phone.trim(), region: f.region.trim(), gender: f.gender, meal_restrictions: f.meal_restrictions.trim(), role: f.role, active: f.active === '1', foil: f.foil, epee: f.epee, sabre: f.sabre, para: f.para };
   const r = await busy($('modalSave'), () => sb.from('profiles').update(row).eq('id', id));
   if (fail(r, 'modalMsg')) return;
@@ -995,13 +1038,14 @@ async function saveUser(e, id) {
 }
 function evModal(id) {
   const ev = id ? S.events.find(x => x.id === id) : { days: [] };
-  openModal(`${modalHead(`${id ? 'Edit' : 'Add'} tournament`)}<form data-id="${esc(id || '')}" onsubmit="saveEv(event, this.dataset.id)" class="space-y-4">
-   ${fld('name', 'Tournament name', ev.name)}${fld('date_range', 'Dates (display text)', ev.date_range, 'placeholder="e.g. Nov 28-29, 2026"')}${fld('location', 'Location', ev.location)}
-   <div><label for="f-days" class="${CLS.label}">Days, one per line</label><textarea id="f-days" name="days" rows="4" required aria-describedby="f-days-hint" class="${CLS.input}">${esc(ev.days.join('\n'))}</textarea>
-   <p id="f-days-hint" class="mt-1 text-xs text-slate-600">Each line becomes one day referees can mark. Renaming a day hides answers already given for it.</p></div>${btns}</form>`);
+  openModal(`${modalHead(`${id ? 'Edit' : 'Add'} tournament`)}<form data-id="${esc(id || '')}" onsubmit="saveEv(event, this.dataset.id)" class="space-y-6">
+   ${fld('name', 'Tournament name', ev.name)}${fld('date_range', 'Dates', ev.date_range, 'placeholder="e.g. Nov 28-29, 2026"')}${fld('location', 'Location', ev.location)}
+   <div><label for="f-days" class="${C.label}">Days, one per line</label><textarea id="f-days" name="days" rows="4" required aria-describedby="f-days-hint" class="${C.input} !h-auto py-3">${esc(ev.days.join('\n'))}</textarea>
+   <p id="f-days-hint" class="${C.hint}">Each line becomes one day referees can mark. Renaming a day hides answers already given for it.</p><p id="f-days-err" class="hidden ${C.err}"></p></div>${btns}</form>`);
 }
 async function saveEv(e, id) {
   e.preventDefault(); const f = Object.fromEntries(new FormData(e.target));
+  clearErrs(e.target);
   const days = [...new Set(f.days.split('\n').map(x => x.trim()).filter(Boolean))];
   if (!days.length) return fieldErr('f-days', 'modalMsg', 'Add at least one day.');
   const row = { name: f.name.trim(), date_range: f.date_range.trim(), location: f.location.trim(), days };
